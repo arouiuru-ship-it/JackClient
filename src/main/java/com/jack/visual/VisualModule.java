@@ -23,11 +23,12 @@ import org.lwjgl.glfw.GLFW;
 public class VisualModule implements ClientModInitializer {
     public static boolean killAura = false, fly = false, autoSprint = false;
     public static boolean fullbright = false, aimAssist = false, hud = true, esp = false;
-    public static boolean waveModel = true, targetHud = true;
+    public static boolean waveModel = true, targetHud = true, targetPlayersOnly = false;
     public static String critMode = "Packet";
     public static float aimSmooth = 0.15f;
     public static float flySpeed = 0.05f;
     public static double auraRange = 3.0;
+    public static int auraCps = 10;
     private static final MinecraftClient mc = MinecraftClient.getInstance();
     private static int attackTick = 0;
     private static boolean rshiftHeld = false;
@@ -106,7 +107,8 @@ public class VisualModule implements ClientModInitializer {
                     double dx = best.getX()-c.player.getX(), dy = best.getEyeY()-c.player.getEyeY(), dz = best.getZ()-c.player.getZ();
                     float ty = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0F);
                     float tp = (float)(-Math.toDegrees(Math.atan2(dy, Math.sqrt(dx*dx+dz*dz))));
-                    float sm = aimSmooth * 0.6f;
+                    // ОЧЕНЬ плавное наведение
+                    float sm = aimSmooth * 0.4f;
                     c.player.setYaw(c.player.getYaw() + wrap(ty - c.player.getYaw()) * sm);
                     c.player.setPitch(c.player.getPitch() + (tp - c.player.getPitch()) * sm);
                 }
@@ -119,23 +121,26 @@ public class VisualModule implements ClientModInitializer {
 
             if (waveModel) {
                 double wave = Math.sin(tickCounter * 0.2) * 0.05;
-                t.setPos(t.getX(), t.getY() + wave, t.getZ());
+                t.setPosition(t.getX(), t.getY() + wave, t.getZ());
             }
 
             double dx = t.getX()-c.player.getX(), dy = t.getEyeY()-c.player.getEyeY(), dz = t.getZ()-c.player.getZ();
-            c.player.setYaw((float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0F));
-            c.player.setPitch((float)(-Math.toDegrees(Math.atan2(dy, Math.sqrt(dx*dx+dz*dz)))));
+            float ty = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0F);
+            float tp = (float)(-Math.toDegrees(Math.atan2(dy, Math.sqrt(dx*dx+dz*dz))));
+            c.player.setYaw(c.player.getYaw() + wrap(ty - c.player.getYaw()) * 0.6f);
+            c.player.setPitch(c.player.getPitch() + (tp - c.player.getPitch()) * 0.6f);
 
             attackTick++;
-            if (attackTick < 1) return;
+            int delay = Math.max(1, 20 / auraCps);
+            if (attackTick < delay) return;
             attackTick = 0;
 
             if (critMode.equals("Packet")) {
                 if (c.player.isOnGround() && !c.player.isSubmergedInWater() && !c.player.isInLava() && !c.player.isClimbing()) {
-                    double x = c.player.getX(), y = c.player.getY(), z = c.player.getZ();
+                    double px = c.player.getX(), py = c.player.getY(), pz = c.player.getZ();
                     if (c.player.networkHandler != null) {
-                        c.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y + 0.0625, z, false, false));
-                        c.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y, z, false, false));
+                        c.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(px, py + 0.0625, pz, false, false));
+                        c.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(px, py, pz, false, false));
                     }
                 }
                 if (c.interactionManager != null) {
@@ -144,11 +149,9 @@ public class VisualModule implements ClientModInitializer {
                 }
             } else if (critMode.equals("Jump")) {
                 if (c.player.isOnGround()) c.player.jump();
-                else if (c.player.getVelocity().y < 0.0) {
-                    if (c.interactionManager != null) {
-                        c.interactionManager.attackEntity(c.player, t);
-                        c.player.swingHand(Hand.MAIN_HAND);
-                    }
+                else if (c.player.getVelocity().y < 0.0 && c.interactionManager != null) {
+                    c.interactionManager.attackEntity(c.player, t);
+                    c.player.swingHand(Hand.MAIN_HAND);
                 }
             } else {
                 if (c.interactionManager != null) {
@@ -162,13 +165,18 @@ public class VisualModule implements ClientModInitializer {
     private static Entity findTarget() {
         MinecraftClient c = MinecraftClient.getInstance();
         if (c.player == null || c.world == null) return null;
-        Entity t = null; double cl = auraRange;
+        Entity best = null;
+        double bestHealth = Double.MAX_VALUE;
         for (Entity e : c.world.getEntities()) {
             if (e == c.player || !e.isAlive() || !(e instanceof LivingEntity)) continue;
+            if (targetPlayersOnly && !(e instanceof PlayerEntity)) continue;
             double d = c.player.distanceTo(e);
-            if (d < cl) { cl = d; t = e; }
+            if (d > auraRange) continue;
+            // Приоритет — LowestHealth (как в Meteor)
+            double hp = ((LivingEntity) e).getHealth();
+            if (hp < bestHealth) { bestHealth = hp; best = e; }
         }
-        return t;
+        return best;
     }
 
     private static float wrap(float a) {
