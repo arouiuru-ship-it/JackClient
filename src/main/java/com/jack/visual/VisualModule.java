@@ -109,7 +109,15 @@ public class VisualModule implements ClientModInitializer {
                     double ex = e.getX() - cam.x;
                     double ey = e.getY() + e.getHeight() / 2 - cam.y;
                     double ez = e.getZ() - cam.z;
-                    VertexRendering.drawLine(m, buf, (float)px, (float)py, (float)pz, (float)ex, (float)ey, (float)ez, 1.0f, 0.0f, 0.0f, 1.0f);
+                    // Рисуем линию из маленьких боксов (drawLine нет в 1.21.4)
+                    for (int i = 0; i < 20; i++) {
+                        float t = i / 20.0f;
+                        float lx = (float)(px + (ex - px) * t);
+                        float ly = (float)(py + (ey - py) * t);
+                        float lz = (float)(pz + (ez - pz) * t);
+                        Box dot = new Box(lx - 0.01, ly - 0.01, lz - 0.01, lx + 0.01, ly + 0.01, lz + 0.01);
+                        VertexRendering.drawBox(m, buf, dot, 1.0f, 0.0f, 0.0f, 1.0f);
+                    }
                 }
             }
 
