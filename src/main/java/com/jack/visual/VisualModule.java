@@ -134,8 +134,8 @@ public class VisualModule implements ClientModInitializer {
                 if (c.player.isOnGround() && !c.player.isSubmergedInWater() && !c.player.isInLava() && !c.player.isClimbing()) {
                     double x = c.player.getX(), y = c.player.getY(), z = c.player.getZ();
                     if (c.player.networkHandler != null) {
-                        c.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y + 0.0625, z, false));
-                        c.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y, z, false));
+                        c.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y + 0.0625, z, false, false));
+                        c.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y, z, false, false));
                     }
                 }
                 if (c.interactionManager != null) {
