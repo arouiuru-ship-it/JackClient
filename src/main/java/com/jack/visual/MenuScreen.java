@@ -11,12 +11,25 @@ public class MenuScreen extends Screen {
     @Override
     protected void init() {
         int cx = this.width / 2;
-        int y = this.height / 2 - 80;
+        int y = this.height / 2 - 92;
         addDrawableChild(ButtonWidget.builder(Text.literal("KillAura: " + (VisualModule.killAura ? "ON" : "OFF")), b -> { VisualModule.killAura = !VisualModule.killAura; b.setMessage(Text.literal("KillAura: " + (VisualModule.killAura ? "ON" : "OFF"))); }).dimensions(cx - 75, y, 150, 20).build());
         y += 24;
-        addDrawableChild(ButtonWidget.builder(Text.literal("Crits: " + (VisualModule.crits ? "ON" : "OFF")), b -> { VisualModule.crits = !VisualModule.crits; b.setMessage(Text.literal("Crits: " + (VisualModule.crits ? "ON" : "OFF"))); }).dimensions(cx - 75, y, 150, 20).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal("Crit Mode: " + VisualModule.critMode), b -> {
+            if (VisualModule.critMode.equals("Packet")) VisualModule.critMode = "Jump";
+            else if (VisualModule.critMode.equals("Jump")) VisualModule.critMode = "Off";
+            else VisualModule.critMode = "Packet";
+            b.setMessage(Text.literal("Crit Mode: " + VisualModule.critMode));
+        }).dimensions(cx - 75, y, 150, 20).build());
+        y += 24;
+        addDrawableChild(ButtonWidget.builder(Text.literal("CPS: " + VisualModule.auraCps), b -> {
+            VisualModule.auraCps += 1;
+            if (VisualModule.auraCps > 20) VisualModule.auraCps = 1;
+            b.setMessage(Text.literal("CPS: " + VisualModule.auraCps));
+        }).dimensions(cx - 75, y, 150, 20).build());
         y += 24;
         addDrawableChild(ButtonWidget.builder(Text.literal("Fly: " + (VisualModule.fly ? "ON" : "OFF")), b -> { VisualModule.fly = !VisualModule.fly; b.setMessage(Text.literal("Fly: " + (VisualModule.fly ? "ON" : "OFF"))); }).dimensions(cx - 75, y, 150, 20).build());
+        y += 24;
+        addDrawableChild(ButtonWidget.builder(Text.literal("NoFall: " + (VisualModule.noFall ? "ON" : "OFF")), b -> { VisualModule.noFall = !VisualModule.noFall; b.setMessage(Text.literal("NoFall: " + (VisualModule.noFall ? "ON" : "OFF"))); }).dimensions(cx - 75, y, 150, 20).build());
         y += 24;
         addDrawableChild(ButtonWidget.builder(Text.literal("Target: " + (VisualModule.targetPlayersOnly ? "Players" : "All")), b -> { VisualModule.targetPlayersOnly = !VisualModule.targetPlayersOnly; b.setMessage(Text.literal("Target: " + (VisualModule.targetPlayersOnly ? "Players" : "All"))); }).dimensions(cx - 75, y, 150, 20).build());
         y += 24;
@@ -28,7 +41,7 @@ public class MenuScreen extends Screen {
     @Override
     public void render(DrawContext ctx, int mx, int my, float d) {
         renderBackground(ctx, mx, my, d);
-        ctx.drawCenteredTextWithShadow(textRenderer, "JackClient v1.1", width / 2, height / 2 - 105, 0xFFFFFF);
+        ctx.drawCenteredTextWithShadow(textRenderer, "JackClient v1.3", width / 2, height / 2 - 130, 0xFFFFFF);
         super.render(ctx, mx, my, d);
     }
 
