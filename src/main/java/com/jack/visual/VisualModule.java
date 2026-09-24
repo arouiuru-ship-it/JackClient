@@ -94,7 +94,7 @@ public class VisualModule implements ClientModInitializer {
                     m.multiply(mc.getEntityRenderDispatcher().camera.getRotation());
                     m.scale(-0.025f, -0.025f, 0.025f);
                     String name = e.getName().getString() + " \u00a77[" + String.format("%.1f", mc.player.distanceTo(e)) + "m]";
-                    mc.textRenderer.drawWithShadow(m, name, -mc.textRenderer.getWidth(name) / 2f, 0, 0xFFFFFF);
+                    mc.textRenderer.draw(Text.literal(name), -mc.textRenderer.getWidth(name) / 2f, 0, 0xFFFFFF, true, m.peek().getPositionMatrix(), consumers, net.minecraft.client.font.TextRenderer.TextLayerType.SEE_THROUGH, 0, 0xF000F0);
                     m.pop();
                 }
             }
@@ -122,7 +122,7 @@ public class VisualModule implements ClientModInitializer {
                 m.multiply(mc.getEntityRenderDispatcher().camera.getRotation());
                 m.scale(-0.025f, -0.025f, 0.025f);
                 String name = mc.player.getName().getString();
-                mc.textRenderer.drawWithShadow(m, name, -mc.textRenderer.getWidth(name) / 2f, 0, 0x00FF88);
+                mc.textRenderer.draw(Text.literal(name), -mc.textRenderer.getWidth(name) / 2f, 0, 0x00FF88, true, m.peek().getPositionMatrix(), consumers, net.minecraft.client.font.TextRenderer.TextLayerType.SEE_THROUGH, 0, 0xF000F0);
                 m.pop();
             }
 
