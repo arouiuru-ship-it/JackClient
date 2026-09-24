@@ -3,19 +3,26 @@ package com.jack.visual;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.render.VertexConsumer;
+import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.render.VertexRendering;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
+import net.minecraft.util.math.Box;
 import org.lwjgl.glfw.GLFW;
 
 public class VisualModule implements ClientModInitializer {
     public static boolean killAura = false, fly = false, autoSprint = false;
-    public static boolean fullbright = false, aimAssist = false, hud = true;
+    public static boolean fullbright = false, aimAssist = false, hud = true, esp = false;
     public static String critMode = "Packet";
     public static float aimSmooth = 0.35f;
     public static float flySpeed = 0.05f;
@@ -32,12 +39,26 @@ public class VisualModule implements ClientModInitializer {
         HudRenderCallback.EVENT.register((ctx, t) -> {
             if (!hud || mc.player == null || mc.options.hudHidden) return;
             int x = 6, y = 6;
-            ctx.fill(x - 3, y - 3, x + 140, y + 58, 0x66000000);
-            ctx.fill(x - 3, y - 3, x + 140, y - 1, 0xFF00AA55);
-            ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§a§lJack §f§lv1.3"), x, y, 0xFFFFFF); y += 12;
-            ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§7FPS §f" + mc.getCurrentFps() + "  §7XYZ §f" + String.format("%.0f %.0f %.0f", mc.player.getX(), mc.player.getY(), mc.player.getZ())), x, y, 0xFFFFFF); y += 12;
-            ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§7KA " + (killAura ? "§a●" : "§c●") + "  §7Crit §f" + critMode), x, y, 0xFFFFFF); y += 12;
-            ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§7Aim " + (aimAssist ? "§a●" : "§c●") + "  §7Fly " + (fly ? "§a●" : "§c●") + "  §7HUD §a●"), x, y, 0xFFFFFF);
+            ctx.fill(x - 3, y - 3, x + 130, y + 56, 0x66000000);
+            ctx.fill(x - 3, y - 3, x + 130, y - 1, 0xFF00AA55);
+            ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§a§lJack §fv1.3"), x, y, 0xFFFFFF); y += 12;
+            ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§7FPS §f" + mc.getCurrentFps() + " §7XYZ §f" + String.format("%.0f %.0f %.0f", mc.player.getX(), mc.player.getY(), mc.player.getZ())), x, y, 0xFFFFFF); y += 12;
+            ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§7KA " + (killAura ? "§a●" : "§c●") + " §7Crit §f" + critMode + " §7ESP " + (esp ? "§a●" : "§c●")), x, y, 0xFFFFFF); y += 12;
+            ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§7Aim " + (aimAssist ? "§a●" : "§c●") + " §7Fly " + (fly ? "§a●" : "§c●") + " §7Sprint " + (autoSprint ? "§a●" : "§c●")), x, y, 0xFFFFFF);
+        });
+
+        WorldRenderEvents.AFTER_ENTITIES.register(context -> {
+            if (!esp || mc.world == null || mc.player == null) return;
+            MatrixStack m = context.matrixStack();
+            var cam = context.camera().getPos();
+            VertexConsumerProvider.Immediate consumers = mc.getBufferBuilders().getEntityVertexConsumers();
+            VertexConsumer buf = consumers.getBuffer(RenderLayer.getLines());
+            for (Entity e : mc.world.getEntities()) {
+                if (!(e instanceof PlayerEntity) || e == mc.player || !e.isAlive()) continue;
+                Box b = e.getBoundingBox().offset(-cam.x, -cam.y, -cam.z);
+                VertexRendering.drawBox(m, buf, b, 1.0f, 0.15f, 0.15f, 1.0f);
+            }
+            consumers.draw();
         });
         ClientTickEvents.END_CLIENT_TICK.register(c -> {
             if (c.player == null) return;
