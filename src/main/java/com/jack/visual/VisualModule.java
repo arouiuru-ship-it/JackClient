@@ -75,16 +75,57 @@ public class VisualModule implements ClientModInitializer {
         });
 
         WorldRenderEvents.AFTER_ENTITIES.register(context -> {
-            if (!esp || mc.world == null || mc.player == null) return;
+            if (mc.world == null || mc.player == null) return;
             MatrixStack m = context.matrixStack();
             var cam = context.camera().getPos();
             VertexConsumerProvider.Immediate consumers = mc.getBufferBuilders().getEntityVertexConsumers();
-            VertexConsumer buf = consumers.getBuffer(RenderLayer.getLines());
-            for (Entity e : mc.world.getEntities()) {
-                if (!(e instanceof PlayerEntity) || e == mc.player || !e.isAlive()) continue;
-                Box b = e.getBoundingBox().offset(-cam.x, -cam.y, -cam.z);
-                VertexRendering.drawBox(m, buf, b, 1.0f, 0.15f, 0.15f, 1.0f);
+
+            if (esp) {
+                VertexConsumer buf = consumers.getBuffer(RenderLayer.getLines());
+                for (Entity e : mc.world.getEntities()) {
+                    if (!(e instanceof PlayerEntity) || e == mc.player || !e.isAlive()) continue;
+                    Box b = e.getBoundingBox().offset(-cam.x, -cam.y, -cam.z);
+                    VertexRendering.drawBox(m, buf, b, 1.0f, 0.15f, 0.15f, 1.0f);
+                    double dx = e.getX() - cam.x;
+                    double dy = (e.getY() + e.getHeight() + 0.5) - cam.y;
+                    double dz = e.getZ() - cam.z;
+                    m.push();
+                    m.translate(dx, dy, dz);
+                    m.multiply(mc.getEntityRenderDispatcher().camera.getRotation());
+                    m.scale(-0.025f, -0.025f, 0.025f);
+                    String name = e.getName().getString() + " \u00a77[" + String.format("%.1f", mc.player.distanceTo(e)) + "m]";
+                    mc.textRenderer.drawWithShadow(m, name, -mc.textRenderer.getWidth(name) / 2f, 0, 0xFFFFFF);
+                    m.pop();
+                }
             }
+
+            if (tracers) {
+                VertexConsumer buf = consumers.getBuffer(RenderLayer.getLines());
+                double px = mc.player.getX() - cam.x;
+                double py = mc.player.getY() + mc.player.getEyeHeight(mc.player.getPose()) - cam.y;
+                double pz = mc.player.getZ() - cam.z;
+                for (Entity e : mc.world.getEntities()) {
+                    if (!(e instanceof PlayerEntity) || e == mc.player || !e.isAlive()) continue;
+                    double ex = e.getX() - cam.x;
+                    double ey = e.getY() + e.getHeight() / 2 - cam.y;
+                    double ez = e.getZ() - cam.z;
+                    VertexRendering.drawLine(m, buf, (float)px, (float)py, (float)pz, (float)ex, (float)ey, (float)ez, 1.0f, 0.0f, 0.0f, 1.0f);
+                }
+            }
+
+            if (selfNametag && mc.options.getPerspective().isFrontView()) {
+                double dx = mc.player.getX() - cam.x;
+                double dy = (mc.player.getY() + mc.player.getHeight() + 0.5) - cam.y;
+                double dz = mc.player.getZ() - cam.z;
+                m.push();
+                m.translate(dx, dy, dz);
+                m.multiply(mc.getEntityRenderDispatcher().camera.getRotation());
+                m.scale(-0.025f, -0.025f, 0.025f);
+                String name = mc.player.getName().getString();
+                mc.textRenderer.drawWithShadow(m, name, -mc.textRenderer.getWidth(name) / 2f, 0, 0x00FF88);
+                m.pop();
+            }
+
             consumers.draw();
         });
 

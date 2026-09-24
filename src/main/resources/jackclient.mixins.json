@@ -4,7 +4,8 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "TitleScreenMixin",
-    "OptimizedMixin"
+    "OptimizedMixin",
+    "CustomSkyMixin"
   ],
   "injectors": {
     "defaultRequire": 1
