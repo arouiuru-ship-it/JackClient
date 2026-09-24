@@ -53,11 +53,10 @@ public class VisualModule implements ClientModInitializer {
     private static float origGamma = 0f;
     private static long tickCounter = 0;
     private static boolean jumpCircleActive = false;
-    private static double jumpCircleX, jumpCircleY, jumpCircleZ;
+    private static double jumpCircleX = 0, jumpCircleY = 0, jumpCircleZ = 0;
     private static float jumpCircleRadius = 0f;
     private static int jumpCircleLife = 0;
-    private static double jumpCircleX, jumpCircleY, jumpCircleZ;
-
+        private static double jumpCircleX, jumpCircleY,             private static double jumpCircleX, jumpCircleY, 
     @Override
     public void onInitializeClient() {
         HudRenderCallback.EVENT.register((ctx, t) -> {
