@@ -37,12 +37,25 @@ public class VisualModule implements ClientModInitializer {
     public static int auraCps = 10;
     public static String lastTarget = null;
     public static float handScale = 1.0f, handSwingSpeed = 1.0f, handWaveIntensity = 0.5f;
+    public static float tracerWidth = 0.01f;
+    public static int tracerSegments = 30;
+    public static boolean targetHudShowArmor = true;
+    public static boolean targetHudShowDistance = true;
+    public static boolean jumpCircle = false, customCrosshair = false, totemCounter = false;
+    public static float crosshairSize = 4.0f;
+    public static int crosshairColor = 0x00FF88;
+    public static int crosshairGap = 3;
+    public static float jumpCircleRadiusMax = 1.5f;
 
     private static final MinecraftClient mc = MinecraftClient.getInstance();
     private static int attackTick = 0;
     private static boolean rshiftHeld = false;
     private static float origGamma = 0f;
     private static long tickCounter = 0;
+    private static boolean jumpCircleActive = false;
+    private static double jumpCircleX, jumpCircleY, jumpCircleZ;
+    private static float jumpCircleRadius = 0f;
+    private static int jumpCircleLife = 0;
     private static boolean jumpCircleActive = false;
     private static double jumpCircleX, jumpCircleY, jumpCircleZ;
     private static float jumpCircleRadius = 0f;
