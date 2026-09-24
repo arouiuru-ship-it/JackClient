@@ -13,9 +13,7 @@ import net.minecraft.client.util.InputUtil;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
@@ -31,12 +29,11 @@ public class VisualModule implements ClientModInitializer {
     public static boolean fullbright = false, aimAssist = false, hud = true, esp = false;
     public static boolean waveModel = true, targetHud = true, targetPlayersOnly = false;
     public static boolean noFall = false, cpsEnabled = true, optimized = true;
-    public static String critMode = "Packet";
+    public static String critMode = "Jump";   // Jump по умолчанию — самый надёжный
     public static float aimSmooth = 0.15f;
     public static float flySpeed = 0.05f;
     public static double auraRange = 3.5;
     public static int auraCps = 10;
-    public static float handScale = 1.0f, handSwingSpeed = 1.0f, handWaveIntensity = 0.5f;
     public static String lastTarget = null;
 
     private static final MinecraftClient mc = MinecraftClient.getInstance();
@@ -112,7 +109,7 @@ public class VisualModule implements ClientModInitializer {
 
             if (autoSprint && c.player.forwardSpeed > 0 && !c.player.isSneaking() && !c.player.isUsingItem()) c.player.setSprinting(true);
 
-            // ===== SMOOTH AIM ASSIST (по мотивам Meteor Rotations) =====
+            // ПЛАВНЫЙ AIM (метод Meteor Rotations)
             if (aimAssist) {
                 Entity best = findTarget();
                 if (best instanceof LivingEntity) {
@@ -134,38 +131,40 @@ public class VisualModule implements ClientModInitializer {
             if (t == null) { attackTick = 0; lastTarget = null; return; }
             if (t instanceof LivingEntity le) lastTarget = le.getName().getString();
 
-            if (waveModel) {
-                double wave = Math.sin(tickCounter * 0.2) * 0.05;
-                t.setPosition(t.getX(), t.getY() + wave, t.getZ());
-            }
-
-            // Rotation on target
-            c.player.setYaw(c.player.getYaw() + MathHelper.wrapDegrees(getYawTo(t) - c.player.getYaw()) * 0.5f);
-            c.player.setPitch(c.player.getPitch() + (getPitchTo(t, c.player) - c.player.getPitch()) * 0.5f);
+            // Смотрим на цель
+            float yawTo = getYawTo(t);
+            float pitchTo = getPitchTo(t, c.player);
+            c.player.setYaw(c.player.getYaw() + MathHelper.wrapDegrees(yawTo - c.player.getYaw()) * 0.6f);
+            c.player.setPitch(c.player.getPitch() + (pitchTo - c.player.getPitch()) * 0.6f);
 
             attackTick++;
             int delay = cpsEnabled ? Math.max(1, 20 / auraCps) : 1;
             if (attackTick < delay) return;
             attackTick = 0;
 
-            // ===== CRITS =====
-            if (critMode.equals("Packet")) {
-                if (c.player.isOnGround() && !c.player.isSubmergedInWater() && !c.player.isInLava() && !c.player.isClimbing()) {
-                    double px = c.player.getX(), py = c.player.getY(), pz = c.player.getZ();
-                    if (c.player.networkHandler != null) {
-                        c.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(px, py + 0.0625, pz, false, false));
-                        c.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(px, py, pz, false, false));
+            // КРИТЫ — метод Meteor (реальный прыжок + атака в падении)
+            if (critMode.equals("Jump")) {
+                if (c.player.isOnGround()) {
+                    c.player.jump();
+                } else if (c.player.fallDistance > 0.0F && c.player.getVelocity().y < 0.0) {
+                    if (c.interactionManager != null) {
+                        c.interactionManager.attackEntity(c.player, t);
+                        c.player.swingHand(Hand.MAIN_HAND);
                     }
                 }
-                if (c.interactionManager != null) {
-                    c.interactionManager.attackEntity(c.player, t);
-                    c.player.swingHand(Hand.MAIN_HAND);
-                }
-            } else if (critMode.equals("Jump")) {
-                if (c.player.isOnGround()) c.player.jump();
-                else if (c.player.getVelocity().y < 0.0 && c.interactionManager != null) {
-                    c.interactionManager.attackEntity(c.player, t);
-                    c.player.swingHand(Hand.MAIN_HAND);
+            } else if (critMode.equals("Packet")) {
+                // Фейковое падение через пакеты
+                if (c.player.isOnGround()) {
+                    double px = c.player.getX(), py = c.player.getY(), pz = c.player.getZ();
+                    if (c.player.networkHandler != null) {
+                        c.player.networkHandler.sendPacket(new net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket.PositionAndOnGround(px, py + 0.0625, pz, false, false));
+                        c.player.networkHandler.sendPacket(new net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket.PositionAndOnGround(px, py, pz, false, false));
+                    }
+                    c.player.fallDistance = 0.1F;
+                    if (c.interactionManager != null) {
+                        c.interactionManager.attackEntity(c.player, t);
+                        c.player.swingHand(Hand.MAIN_HAND);
+                    }
                 }
             } else {
                 if (c.interactionManager != null) {
@@ -176,7 +175,6 @@ public class VisualModule implements ClientModInitializer {
         });
     }
 
-    // ===== TARGET FINDER (по мотивам Meteor TargetUtils) =====
     private static Entity findTarget() {
         MinecraftClient c = MinecraftClient.getInstance();
         if (c.player == null || c.world == null) return null;
@@ -184,18 +182,12 @@ public class VisualModule implements ClientModInitializer {
         for (Entity e : c.world.getEntities()) {
             if (e == c.player || !e.isAlive() || !(e instanceof LivingEntity)) continue;
             if (targetPlayersOnly && !(e instanceof PlayerEntity)) continue;
-            if (targetPlayersOnly && e instanceof PlayerEntity p && p.isCreative()) continue;
             double d = c.player.distanceTo(e);
             if (d > auraRange) continue;
             targets.add(e);
         }
         if (targets.isEmpty()) return null;
-        // Сортировка по углу (как в Meteor)
-        targets.sort(Comparator.comparingDouble(e -> {
-            float yawTo = getYawTo(e);
-            float diff = Math.abs(MathHelper.wrapDegrees(yawTo - c.player.getYaw()));
-            return diff;
-        }));
+        targets.sort(Comparator.comparingDouble(e -> Math.abs(MathHelper.wrapDegrees(getYawTo(e) - c.player.getYaw()))));
         return targets.get(0);
     }
 

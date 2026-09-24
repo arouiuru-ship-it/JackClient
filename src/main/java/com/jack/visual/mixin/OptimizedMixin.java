@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(WorldRenderer.class)
 public class OptimizedMixin {
     @Inject(method = "renderWeather", at = @At("HEAD"), cancellable = true)
-    private void onRenderWeather(CallbackInfo ci) {
+    private void jackRenderWeather(CallbackInfo ci) {
         if (VisualModule.optimized) ci.cancel();
     }
 }
