@@ -29,6 +29,8 @@ public class VisualModule implements ClientModInitializer {
     public static float flySpeed = 0.05f;
     public static double auraRange = 3.0;
     public static int auraCps = 10;
+    public static boolean noFall = false;
+    public static String lastTarget = null;
     private static final MinecraftClient mc = MinecraftClient.getInstance();
     private static int attackTick = 0;
     private static boolean rshiftHeld = false;
