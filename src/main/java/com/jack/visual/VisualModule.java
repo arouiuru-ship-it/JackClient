@@ -16,14 +16,13 @@ public class VisualModule implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        HudRenderCallback.EVENT.register((m, t) -> {
+        HudRenderCallback.EVENT.register((ctx, tick) -> {
             if (mc.player == null || mc.options.hudHidden) return;
-            mc.textRenderer.drawWithShadow(m, Text.literal("FPS: " + mc.getCurrentFps()), 5, 5, 0xFFFFFF);
-            mc.textRenderer.drawWithShadow(m, Text.literal(String.format("XYZ: %.1f %.1f %.1f", mc.player.getX(), mc.player.getY(), mc.player.getZ())), 5, 17, 0xFFFFFF);
-            mc.textRenderer.drawWithShadow(m, Text.literal("KillAura [R]: " + (killAura ? "ON" : "OFF")), 5, 29, 0xFFFFFF);
-            mc.textRenderer.drawWithShadow(m, Text.literal("Fly [G]: " + (fly ? "ON" : "OFF")), 5, 41, 0xFFFFFF);
+            ctx.drawTextWithShadow(mc.textRenderer, Text.literal("FPS: " + mc.getCurrentFps()), 5, 5, 0xFFFFFF);
+            ctx.drawTextWithShadow(mc.textRenderer, Text.literal(String.format("XYZ: %.1f %.1f %.1f", mc.player.getX(), mc.player.getY(), mc.player.getZ())), 5, 17, 0xFFFFFF);
+            ctx.drawTextWithShadow(mc.textRenderer, Text.literal("KillAura [R]: " + (killAura ? "ON" : "OFF")), 5, 29, 0xFFFFFF);
+            ctx.drawTextWithShadow(mc.textRenderer, Text.literal("Fly [G]: " + (fly ? "ON" : "OFF")), 5, 41, 0xFFFFFF);
         });
-
         ClientTickEvents.END_CLIENT_TICK.register(c -> {
             if (c.player == null) return;
             if (net.minecraft.client.util.InputUtil.isKeyPressed(c.getWindow().getHandle(), GLFW.GLFW_KEY_R)) {
