@@ -118,9 +118,20 @@ public class VisualModule implements ClientModInitializer {
                     float targetPitch = getPitchTo(best, c.player);
                     float deltaYaw = MathHelper.wrapDegrees(targetYaw - c.player.getYaw());
                     float deltaPitch = targetPitch - c.player.getPitch();
-                    float maxStep = aimSmooth * 0.5f;
-                    if (Math.abs(deltaYaw) > maxStep) deltaYaw = maxStep * Math.signum(deltaYaw);
-                    if (Math.abs(deltaPitch) > maxStep) deltaPitch = maxStep * Math.signum(deltaPitch);
+
+                    // aimSmooth от 0.05 до 0.9 — итоговый множитель
+                    float mult = aimSmooth * 0.5f;
+
+                    // Ограничиваем шаг за тик
+                    float maxYawStep = 15.0f * mult;
+                    float maxPitchStep = 10.0f * mult;
+
+                    if (deltaYaw > maxYawStep) deltaYaw = maxYawStep;
+                    else if (deltaYaw < -maxYawStep) deltaYaw = -maxYawStep;
+
+                    if (deltaPitch > maxPitchStep) deltaPitch = maxPitchStep;
+                    else if (deltaPitch < -maxPitchStep) deltaPitch = -maxPitchStep;
+
                     c.player.setYaw(c.player.getYaw() + deltaYaw);
                     c.player.setPitch(c.player.getPitch() + deltaPitch);
                 }
@@ -128,21 +139,33 @@ public class VisualModule implements ClientModInitializer {
 
             if (!killAura) { lastTarget = null; return; }
 
-            // ==== SIMPLE KILLAURA ====
+            // ==== SMOOTH KILLAURA ====
             Entity t = findTarget();
             if (t == null) { lastTarget = null; return; }
             if (t instanceof LivingEntity le) lastTarget = le.getName().getString();
 
-            // Смотрим на цель
-            double dx = t.getX() - c.player.getX();
-            double dy = t.getEyeY() - c.player.getEyeY();
-            double dz = t.getZ() - c.player.getZ();
-            float yaw = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0F);
-            float pitch = (float)(-Math.toDegrees(Math.atan2(dy, Math.sqrt(dx*dx + dz*dz))));
-            c.player.setYaw(yaw);
-            c.player.setPitch(pitch);
+            // ПЛАВНАЯ ротация: ограниченный шаг за тик (как в Meteor Rotations)
+            float targetYaw = getYawTo(t);
+            float targetPitch = getPitchTo(t, c.player);
+            float deltaYaw = MathHelper.wrapDegrees(targetYaw - c.player.getYaw());
+            float deltaPitch = targetPitch - c.player.getPitch();
 
-            // Атака через натуральный кулдаун (работает всегда)
+            // Максимальный шаг за один тик — 25 градусов yaw, 15 pitch
+            float maxYawStep = 25.0f;
+            float maxPitchStep = 15.0f;
+
+            if (deltaYaw > maxYawStep) deltaYaw = maxYawStep;
+            else if (deltaYaw < -maxYawStep) deltaYaw = -maxYawStep;
+
+            if (deltaPitch > maxPitchStep) deltaPitch = maxPitchStep;
+            else if (deltaPitch < -maxPitchStep) deltaPitch = -maxPitchStep;
+
+            // Дополнительное сглаживание (мягкий множитель)
+            float smooth = 0.6f;
+            c.player.setYaw(c.player.getYaw() + deltaYaw * smooth);
+            c.player.setPitch(c.player.getPitch() + deltaPitch * smooth);
+
+            // Атака через натуральный кулдаун
             if (c.player.getAttackCooldownProgress(0.0f) >= 1.0f) {
                 if (c.interactionManager != null) {
                     c.interactionManager.attackEntity(c.player, t);
