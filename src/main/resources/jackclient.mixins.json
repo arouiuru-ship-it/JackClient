@@ -3,10 +3,7 @@
   "package": "com.jack.visual.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
-    "TitleScreenMixin",
-    "HeldItemRendererMixin",
-    "FullbrightMixin",
-    "OptimizedMixin"
+    "TitleScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1
