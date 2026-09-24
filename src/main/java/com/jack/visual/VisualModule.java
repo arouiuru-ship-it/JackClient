@@ -24,14 +24,12 @@ public class VisualModule implements ClientModInitializer {
     public static boolean killAura = false, fly = false, autoSprint = false;
     public static boolean fullbright = false, aimAssist = false, hud = true, esp = false;
     public static String critMode = "Packet";
-    public static float aimSmooth = 0.35f;
+    public static float aimSmooth = 0.15f;
     public static float flySpeed = 0.05f;
-    public static int auraCps = 4;
     public static double auraRange = 3.0;
     private static final MinecraftClient mc = MinecraftClient.getInstance();
-    private static int tick = 0, critStage = 0;
+    private static int attackTick = 0;
     private static boolean rshiftHeld = false;
-    private static Entity pendingTarget = null;
     private static float origGamma = 0f;
 
     @Override
@@ -41,7 +39,7 @@ public class VisualModule implements ClientModInitializer {
             int x = 6, y = 6;
             ctx.fill(x - 3, y - 3, x + 130, y + 56, 0x66000000);
             ctx.fill(x - 3, y - 3, x + 130, y - 1, 0xFF00AA55);
-            ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§a§lJack §fv1.3"), x, y, 0xFFFFFF); y += 12;
+            ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§a§lJack §fv1.4"), x, y, 0xFFFFFF); y += 12;
             ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§7FPS §f" + mc.getCurrentFps() + " §7XYZ §f" + String.format("%.0f %.0f %.0f", mc.player.getX(), mc.player.getY(), mc.player.getZ())), x, y, 0xFFFFFF); y += 12;
             ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§7KA " + (killAura ? "§a●" : "§c●") + " §7Crit §f" + critMode + " §7ESP " + (esp ? "§a●" : "§c●")), x, y, 0xFFFFFF); y += 12;
             ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§7Aim " + (aimAssist ? "§a●" : "§c●") + " §7Fly " + (fly ? "§a●" : "§c●") + " §7Sprint " + (autoSprint ? "§a●" : "§c●")), x, y, 0xFFFFFF);
@@ -94,51 +92,59 @@ public class VisualModule implements ClientModInitializer {
                     double dx = best.getX()-c.player.getX(), dy = best.getEyeY()-c.player.getEyeY(), dz = best.getZ()-c.player.getZ();
                     float ty = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0F);
                     float tp = (float)(-Math.toDegrees(Math.atan2(dy, Math.sqrt(dx*dx+dz*dz))));
-                    c.player.setYaw(c.player.getYaw() + wrap(ty - c.player.getYaw()) * aimSmooth);
-                    c.player.setPitch(c.player.getPitch() + (tp - c.player.getPitch()) * aimSmooth);
+                    float sm = aimSmooth * 0.6f;
+                    c.player.setYaw(c.player.getYaw() + wrap(ty - c.player.getYaw()) * sm);
+                    c.player.setPitch(c.player.getPitch() + (tp - c.player.getPitch()) * sm);
                 }
             }
 
-            if (!killAura) { pendingTarget = null; critStage = 0; return; }
+            if (!killAura) { attackTick = 0; return; }
 
-            if (critMode.equals("Packet") && pendingTarget != null && critStage > 0) {
-                if (!pendingTarget.isAlive() || c.player.distanceTo(pendingTarget) > auraRange + 1.5) { pendingTarget = null; critStage = 0; return; }
-                if (critStage == 1) {
-                    if (c.player.networkHandler != null) c.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(c.player.getX(), c.player.getY() + 0.0625, c.player.getZ(), false, false));
-                    critStage = 2; return;
-                }
-                if (critStage == 2) {
-                    if (c.interactionManager != null) { c.interactionManager.attackEntity(c.player, pendingTarget); c.player.swingHand(Hand.MAIN_HAND); }
-                    if (c.player.networkHandler != null) c.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(c.player.getX(), c.player.getY(), c.player.getZ(), true, false));
-                    pendingTarget = null; critStage = 0; return;
-                }
-            }
-
-            if (critMode.equals("Jump") && pendingTarget != null) {
-                if (!pendingTarget.isAlive() || c.player.distanceTo(pendingTarget) > auraRange + 1.5) { pendingTarget = null; return; }
-                if (c.player.getVelocity().y < 0.0 && c.player.fallDistance > 0.0F) {
-                    if (c.interactionManager != null) { c.interactionManager.attackEntity(c.player, pendingTarget); c.player.swingHand(Hand.MAIN_HAND); }
-                    pendingTarget = null;
-                }
-                return;
-            }
-
-            tick++;
-            if (tick < (20 / auraCps)) return;
-            tick = 0;
             Entity t = null; double cl = auraRange;
             for (Entity e : c.world.getEntities()) {
                 if (e == c.player || !e.isAlive() || !(e instanceof LivingEntity)) continue;
                 double d = c.player.distanceTo(e);
                 if (d < cl) { cl = d; t = e; }
             }
-            if (t == null) return;
+            if (t == null) { attackTick = 0; return; }
+
             double dx = t.getX()-c.player.getX(), dy = t.getEyeY()-c.player.getEyeY(), dz = t.getZ()-c.player.getZ();
             c.player.setYaw((float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0F));
             c.player.setPitch((float)(-Math.toDegrees(Math.atan2(dy, Math.sqrt(dx*dx+dz*dz)))));
-            if (critMode.equals("Packet")) { pendingTarget = t; critStage = 1; }
-            else if (critMode.equals("Jump")) { if (c.player.isOnGround()) { c.player.jump(); pendingTarget = t; } }
-            else if (c.interactionManager != null) { c.interactionManager.attackEntity(c.player, t); c.player.swingHand(Hand.MAIN_HAND); }
+
+            attackTick++;
+            if (attackTick < 2) return;
+            attackTick = 0;
+
+            if (critMode.equals("Packet")) {
+                c.player.fallDistance = 0.1F;
+                if (c.player.networkHandler != null) {
+                    c.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(
+                        c.player.getX(), c.player.getY() + 0.0625, c.player.getZ(), false, false));
+                }
+                if (c.interactionManager != null) {
+                    c.interactionManager.attackEntity(c.player, t);
+                    c.player.swingHand(Hand.MAIN_HAND);
+                }
+                if (c.player.networkHandler != null) {
+                    c.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(
+                        c.player.getX(), c.player.getY(), c.player.getZ(), true, false));
+                }
+            } else if (critMode.equals("Jump")) {
+                if (c.player.isOnGround()) {
+                    c.player.jump();
+                } else if (c.player.getVelocity().y < 0.0) {
+                    if (c.interactionManager != null) {
+                        c.interactionManager.attackEntity(c.player, t);
+                        c.player.swingHand(Hand.MAIN_HAND);
+                    }
+                }
+            } else {
+                if (c.interactionManager != null) {
+                    c.interactionManager.attackEntity(c.player, t);
+                    c.player.swingHand(Hand.MAIN_HAND);
+                }
+            }
         });
     }
     private static float wrap(float a) {
