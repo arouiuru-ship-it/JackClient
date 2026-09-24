@@ -63,14 +63,14 @@ public class MenuScreen extends Screen {
             // ===== VISUAL =====
             drawBtn(ctx, mx, my, sX, sY, "PlayerESP " + st(VisualModule.esp), VisualModule.esp);
             drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP), "Tracers " + st(VisualModule.tracers), VisualModule.tracers);
-            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*2, "Self Nametag " + st(VisualModule.selfNametag), VisualModule.selfNametag);
-            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*3, "TargetHUD " + st(VisualModule.targetHud), VisualModule.targetHud);
-            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*4, "View models " + st(VisualModule.waveModel), VisualModule.waveModel);
+            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*2, "JumpCircle " + st(VisualModule.jumpCircle), VisualModule.jumpCircle);
+            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*3, "Crosshair " + st(VisualModule.customCrosshair), VisualModule.customCrosshair);
+            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*4, "TotemCounter " + st(VisualModule.totemCounter), VisualModule.totemCounter);
 
-            drawBtn(ctx, mx, my, sX2, sY, "Custom Sky " + st(VisualModule.customSky), VisualModule.customSky);
-            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP), "Fullbright " + st(VisualModule.fullbright), VisualModule.fullbright);
-            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*2, "Optimized " + st(VisualModule.optimized), VisualModule.optimized);
-            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*3, "HUD " + st(VisualModule.hud), VisualModule.hud);
+            drawBtn(ctx, mx, my, sX2, sY, "TargetHUD " + st(VisualModule.targetHud), VisualModule.targetHud);
+            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP), "View models " + st(VisualModule.waveModel), VisualModule.waveModel);
+            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*2, "Fullbright " + st(VisualModule.fullbright), VisualModule.fullbright);
+            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*3, "Optimized " + st(VisualModule.optimized), VisualModule.optimized);
             drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*4, "§cClose", false);
         }
     }
@@ -181,20 +181,18 @@ public class MenuScreen extends Screen {
             if (btn == 0) {
                 if (hit(mx,my,sX,sY)) { VisualModule.esp = !VisualModule.esp; return true; }
                 if (hit(mx,my,sX,sY+(ROWH+GAP))) { VisualModule.tracers = !VisualModule.tracers; return true; }
-                if (hit(mx,my,sX,sY+(ROWH+GAP)*2)) { VisualModule.selfNametag = !VisualModule.selfNametag; return true; }
-                if (hit(mx,my,sX,sY+(ROWH+GAP)*3)) { VisualModule.targetHud = !VisualModule.targetHud; return true; }
-                if (hit(mx,my,sX,sY+(ROWH+GAP)*4)) {
+                if (hit(mx,my,sX,sY+(ROWH+GAP)*2)) { VisualModule.jumpCircle = !VisualModule.jumpCircle; return true; }
+                if (hit(mx,my,sX,sY+(ROWH+GAP)*3)) { VisualModule.customCrosshair = !VisualModule.customCrosshair; return true; }
+                if (hit(mx,my,sX,sY+(ROWH+GAP)*4)) { VisualModule.totemCounter = !VisualModule.totemCounter; return true; }
+                if (hit(mx,my,sX2,sY)) { VisualModule.targetHud = !VisualModule.targetHud; return true; }
+                if (hit(mx,my,sX2,sY+(ROWH+GAP))) {
                     if (btn == 0) { VisualModule.waveModel = !VisualModule.waveModel; return true; }
-                    if (btn == 1) { waveSub = true; return true; }
                 }
-                if (hit(mx,my,sX2,sY)) { VisualModule.customSky = !VisualModule.customSky; return true; }
-                if (hit(mx,my,sX2,sY+(ROWH+GAP))) { VisualModule.fullbright = !VisualModule.fullbright; return true; }
-                if (hit(mx,my,sX2,sY+(ROWH+GAP)*2)) { VisualModule.optimized = !VisualModule.optimized; return true; }
-                if (hit(mx,my,sX2,sY+(ROWH+GAP)*3)) { VisualModule.hud = !VisualModule.hud; return true; }
+                if (hit(mx,my,sX2,sY+(ROWH+GAP)*2)) { VisualModule.fullbright = !VisualModule.fullbright; return true; }
+                if (hit(mx,my,sX2,sY+(ROWH+GAP)*3)) { VisualModule.optimized = !VisualModule.optimized; return true; }
                 if (hit(mx,my,sX2,sY+(ROWH+GAP)*4)) { close(); return true; }
             }
-            // ПКМ по View models
-            if (btn == 1 && hit(mx,my,sX,sY+(ROWH+GAP)*4)) { waveSub = true; return true; }
+            if (btn == 1 && hit(mx,my,sX2,sY+(ROWH+GAP))) { waveSub = true; return true; }
         }
         return false;
     }
