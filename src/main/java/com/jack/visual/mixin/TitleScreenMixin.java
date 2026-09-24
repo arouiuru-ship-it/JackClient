@@ -24,7 +24,7 @@ public class TitleScreenMixin {
 
         // Рисуем картинку на весь экран (растягиваем)
         try {
-            ctx.drawTexture(BG, 0, 0, 0, 0, w, h, w, h);
+            ctx.drawTexture(net.minecraft.client.render.RenderLayer::getGuiTextured, BG, 0, 0, 0f, 0f, w, h, w, h);
         } catch (Exception e) {
             // Если картинки нет — тёмно-синий градиент
             int steps = 40;
