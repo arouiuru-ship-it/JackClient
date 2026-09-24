@@ -5,6 +5,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
@@ -20,12 +21,15 @@ import net.minecraft.util.math.Box;
 import net.minecraft.util.math.MathHelper;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
 public class VisualModule implements ClientModInitializer {
-    public static boolean killAura = false, aimAssist = false, cpsEnabled = true;
-    public static String critMode = "Jump";
-    public static float aimSmooth = 0.15f;
-    public static double auraRange = 3.5;
-    public static int auraCps = 10;
+    public static boolean killAura = false, aimAssist = false;
+    public static String critMode = "Off";
+    public static float aimSmooth = 0.3f;
+    public static double auraRange = 4.5;
     public static boolean targetPlayersOnly = false;
     public static boolean fly = false, autoSprint = false, noFall = false;
     public static float flySpeed = 0.05f;
@@ -33,11 +37,9 @@ public class VisualModule implements ClientModInitializer {
     public static boolean fullbright = false, optimized = true;
     public static boolean jumpCircle = true;
     public static float jumpCircleRadiusMax = 1.5f;
-    public static float handScale = 1.0f, handSwingSpeed = 1.0f, handWaveIntensity = 0.5f;
     public static String lastTarget = null;
 
     private static final MinecraftClient mc = MinecraftClient.getInstance();
-    private static int attackTick = 0;
     private static boolean rshiftHeld = false;
     private static float origGamma = 0f;
     private static boolean jumpCircleActive = false;
@@ -50,19 +52,17 @@ public class VisualModule implements ClientModInitializer {
     public void onInitializeClient() {
         HudRenderCallback.EVENT.register((ctx, t) -> {
             if (mc.player == null || mc.options.hudHidden) return;
-
             if (hud) {
                 int x = 6, y = 6;
                 ctx.fill(x - 3, y - 3, x + 130, y + 56, 0x66000000);
                 ctx.fill(x - 3, y - 3, x + 130, y - 1, 0xFF00AA55);
-                ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§a§lJack §fv2.5"), x, y, 0xFFFFFF); y += 12;
+                ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§a§lJack §fv3.0"), x, y, 0xFFFFFF); y += 12;
                 ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§7FPS §f" + mc.getCurrentFps() + " §7XYZ §f" + String.format("%.0f %.0f %.0f", mc.player.getX(), mc.player.getY(), mc.player.getZ())), x, y, 0xFFFFFF); y += 12;
-                ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§7KA " + (killAura ? "§a●" : "§c●") + " §7Crit §f" + critMode + " §7ESP " + (esp ? "§a●" : "§c●")), x, y, 0xFFFFFF); y += 12;
+                ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§7KA " + (killAura ? "§a●" : "§c●") + " §7Tgt: §f" + (lastTarget != null ? lastTarget : "none")), x, y, 0xFFFFFF); y += 12;
                 ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§7Aim " + (aimAssist ? "§a●" : "§c●") + " §7Fly " + (fly ? "§a●" : "§c●")), x, y, 0xFFFFFF);
             }
-
-            if (targetHud && killAura) {
-                Entity target = findTarget();
+            if (targetHud && killAura && lastTarget != null) {
+                Entity target = pickTarget();
                 if (target instanceof LivingEntity le) {
                     int tw = 140, th = 44;
                     int tx = ctx.getScaledWindowWidth() / 2 - tw / 2, ty = 30;
@@ -72,7 +72,7 @@ public class VisualModule implements ClientModInitializer {
                     float hp = le.getHealth(), maxHp = le.getMaxHealth();
                     ctx.fill(tx + 4, ty + 18, tx + tw - 4, ty + 26, 0xFF222222);
                     ctx.fill(tx + 4, ty + 18, tx + 4 + (int)((tw - 8) * (hp / maxHp)), ty + 26, 0xFF00FF88);
-                    ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§7HP: §f" + (int)hp + "/" + (int)maxHp + " §7Dist: §f" + String.format("%.1f", mc.player.distanceTo(le)) + "m"), tx + 4, ty + 30, 0xFFFFFF);
+                    ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§7HP: §f" + (int)hp + "/" + (int)maxHp), tx + 4, ty + 30, 0xFFFFFF);
                 }
             }
         });
@@ -82,7 +82,6 @@ public class VisualModule implements ClientModInitializer {
             MatrixStack m = context.matrixStack();
             var cam = context.camera().getPos();
             VertexConsumerProvider.Immediate consumers = mc.getBufferBuilders().getEntityVertexConsumers();
-
             if (esp) {
                 VertexConsumer buf = consumers.getBuffer(RenderLayer.getLines());
                 for (Entity e : mc.world.getEntities()) {
@@ -91,7 +90,6 @@ public class VisualModule implements ClientModInitializer {
                     VertexRendering.drawBox(m, buf, b, 1.0f, 0.15f, 0.15f, 1.0f);
                 }
             }
-
             if (jumpCircle && jumpCircleActive && jumpCircleLife > 0) {
                 VertexConsumer buf = consumers.getBuffer(RenderLayer.getLines());
                 int segments = 20;
@@ -107,7 +105,6 @@ public class VisualModule implements ClientModInitializer {
                     VertexRendering.drawBox(m, buf, dot, 0.0f, 1.0f, 0.5f, alpha);
                 }
             }
-
             consumers.draw();
         });
 
@@ -153,8 +150,9 @@ public class VisualModule implements ClientModInitializer {
             if (autoSprint && c.player.forwardSpeed > 0 && !c.player.isSneaking() && !c.player.isUsingItem()) c.player.setSprinting(true);
             if (noFall) c.player.fallDistance = 0.0F;
 
+            // Aim Assist
             if (aimAssist) {
-                Entity best = findTarget();
+                Entity best = pickTarget();
                 if (best instanceof LivingEntity) {
                     float tYaw = getYawTo(best);
                     float tPitch = getPitchTo(best, c.player);
@@ -168,48 +166,23 @@ public class VisualModule implements ClientModInitializer {
                 }
             }
 
-            if (!killAura) { attackTick = 0; lastTarget = null; return; }
+            // ============ KILLAURA (метод Meteor) ============
+            if (!killAura) { lastTarget = null; return; }
 
-            Entity t = findTarget();
-            if (t == null) { attackTick = 0; lastTarget = null; return; }
+            Entity t = pickTarget();
+            if (t == null) { lastTarget = null; return; }
             if (t instanceof LivingEntity le) lastTarget = le.getName().getString();
 
-            float ty = getYawTo(t);
-            float tp = getPitchTo(t, c.player);
-            c.player.setYaw(c.player.getYaw() + MathHelper.wrapDegrees(ty - c.player.getYaw()) * 0.6f);
-            c.player.setPitch(c.player.getPitch() + (tp - c.player.getPitch()) * 0.6f);
+            // Ротация на цель — плавно, но с максимальным шагом
+            rotateTo(c.player, t, aimSmooth);
 
-            attackTick++;
-            int delay = cpsEnabled ? Math.max(1, 20 / auraCps) : 1;
-            if (attackTick < delay) return;
-            attackTick = 0;
+            // Проверка дистанции (как Meteor — по hitbox)
+            double distSq = c.player.squaredDistanceTo(t);
+            double reach = auraRange + 0.5;
+            if (distSq > reach * reach) return;
 
-            // ============ КРИТЫ ============
-            if (critMode.equals("Jump")) {
-                // Только что стоим на земле → прыгаем для крита
-                if (c.player.isOnGround()) {
-                    c.player.jump();
-                }
-                // Пока летим вниз — бьём с критом
-                else if (c.player.getVelocity().y < 0.0 && c.player.fallDistance > 0.0F) {
-                    if (c.interactionManager != null) {
-                        c.interactionManager.attackEntity(c.player, t);
-                        c.player.swingHand(Hand.MAIN_HAND);
-                    }
-                }
-            } else if (critMode.equals("Packet")) {
-                // Пакетный крит: 2 пакета с y+0.0625 → сервер видит падение
-                double px = c.player.getX(), py = c.player.getY(), pz = c.player.getZ();
-                if (c.player.networkHandler != null) {
-                    c.player.networkHandler.sendPacket(new net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket.PositionAndOnGround(px, py + 0.0625, pz, false, false));
-                    c.player.networkHandler.sendPacket(new net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket.PositionAndOnGround(px, py, pz, false, false));
-                }
-                if (c.interactionManager != null) {
-                    c.interactionManager.attackEntity(c.player, t);
-                    c.player.swingHand(Hand.MAIN_HAND);
-                }
-            } else {
-                // Off — обычный удар
+            // Атака через натуральный cooldown (как в Meteor)
+            if (c.player.getAttackCooldownProgress(0.0f) >= 0.9f) {
                 if (c.interactionManager != null) {
                     c.interactionManager.attackEntity(c.player, t);
                     c.player.swingHand(Hand.MAIN_HAND);
@@ -218,18 +191,50 @@ public class VisualModule implements ClientModInitializer {
         });
     }
 
-    private static Entity findTarget() {
+    // ===== TARGET PICKER (Meteor-style: sort by angle, then distance) =====
+    private static Entity pickTarget() {
         MinecraftClient c = MinecraftClient.getInstance();
         if (c.player == null || c.world == null) return null;
-        Entity best = null;
-        double bestDist = auraRange;
+        ClientPlayerEntity p = c.player;
+        List<Entity> targets = new ArrayList<>();
         for (Entity e : c.world.getEntities()) {
-            if (e == c.player || !e.isAlive() || !(e instanceof LivingEntity)) continue;
+            if (e == p) continue;
+            if (!e.isAlive()) continue;
+            if (!(e instanceof LivingEntity)) continue;
             if (targetPlayersOnly && !(e instanceof PlayerEntity)) continue;
-            double d = c.player.distanceTo(e);
-            if (d < bestDist) { bestDist = d; best = e; }
+            double d = p.distanceTo(e);
+            if (d > auraRange + 1.0) continue;
+            targets.add(e);
         }
-        return best;
+        if (targets.isEmpty()) return null;
+
+        // Сортируем по углу (как в Meteor): цель с минимальным отклонением от взгляда
+        targets.sort(Comparator.comparingDouble(e -> {
+            float yawTo = getYawTo(e);
+            float diff = Math.abs(MathHelper.wrapDegrees(yawTo - p.getYaw()));
+            return diff;
+        }));
+        return targets.get(0);
+    }
+
+    // ===== ROTATION (Meteor-style, плавная) =====
+    private static void rotateTo(ClientPlayerEntity p, Entity t, float speed) {
+        float targetYaw = getYawTo(t);
+        float targetPitch = getPitchTo(t, p);
+        float deltaYaw = MathHelper.wrapDegrees(targetYaw - p.getYaw());
+        float deltaPitch = targetPitch - p.getPitch();
+
+        // Ограничиваем шаг, чтобы не было телепорта взгляда
+        float maxYawStep = 30.0f;
+        float maxPitchStep = 20.0f;
+        if (deltaYaw > maxYawStep) deltaYaw = maxYawStep;
+        else if (deltaYaw < -maxYawStep) deltaYaw = -maxYawStep;
+        if (deltaPitch > maxPitchStep) deltaPitch = maxPitchStep;
+        else if (deltaPitch < -maxPitchStep) deltaPitch = -maxPitchStep;
+
+        float mult = Math.max(0.3f, speed);
+        p.setYaw(p.getYaw() + deltaYaw * mult);
+        p.setPitch(p.getPitch() + deltaPitch * mult);
     }
 
     private static float getYawTo(Entity e) {
@@ -241,7 +246,7 @@ public class VisualModule implements ClientModInitializer {
 
     private static float getPitchTo(Entity e, PlayerEntity p) {
         double dx = e.getX() - p.getX();
-        double dy = (e.getY() + e.getEyeHeight(e.getPose())) - (p.getY() + p.getEyeHeight(p.getPose()));
+        double dy = (e.getY() + e.getHeight() / 2) - (p.getY() + p.getStandingEyeHeight());
         double dz = e.getZ() - p.getZ();
         double dist = Math.sqrt(dx*dx + dz*dz);
         return (float)(-Math.toDegrees(Math.atan2(dy, dist)));
