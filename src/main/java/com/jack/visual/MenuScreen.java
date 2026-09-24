@@ -57,7 +57,7 @@ public class MenuScreen extends Screen {
             drawBtn(ctx, mx, my, sX2, sY, "Fly " + st(VisualModule.fly), VisualModule.fly);
             drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP), "AutoSprint " + st(VisualModule.autoSprint), VisualModule.autoSprint);
             drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*2, "NoFall " + st(VisualModule.noFall), VisualModule.noFall);
-            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*3, "§cClose", false);
+            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*4, "§cClose", false);
         } else {
             drawBtn(ctx, mx, my, sX, sY, "PlayerESP " + st(VisualModule.esp), VisualModule.esp);
             drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP), "TargetHUD " + st(VisualModule.targetHud), VisualModule.targetHud);
@@ -66,9 +66,10 @@ public class MenuScreen extends Screen {
             drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*4, "HUD " + st(VisualModule.hud), VisualModule.hud);
 
             drawBtn(ctx, mx, my, sX2, sY, "Fullbright " + st(VisualModule.fullbright), VisualModule.fullbright);
-            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP), "§7FPS: §f" + mc.getCurrentFps(), false);
-            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*2, "§7Target: §f" + (VisualModule.lastTarget != null ? VisualModule.lastTarget : "none"), false);
-            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*3, "§cClose", false);
+            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP), "Optimized " + st(VisualModule.optimized), VisualModule.optimized);
+            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*2, "§7FPS: §f" + mc.getCurrentFps(), false);
+            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*3, "§7Target: §f" + (VisualModule.lastTarget != null ? VisualModule.lastTarget : "none"), false);
+            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*4, "§cClose", false);
         }
     }
 
@@ -178,7 +179,7 @@ public class MenuScreen extends Screen {
                 if (hit(mx,my,sX2,sY)) { VisualModule.fly = !VisualModule.fly; return true; }
                 if (hit(mx,my,sX2,sY+(ROWH+GAP))) { VisualModule.autoSprint = !VisualModule.autoSprint; return true; }
                 if (hit(mx,my,sX2,sY+(ROWH+GAP)*2)) { VisualModule.noFall = !VisualModule.noFall; return true; }
-                if (hit(mx,my,sX2,sY+(ROWH+GAP)*3)) { close(); return true; }
+                if (hit(mx,my,sX2,sY+(ROWH+GAP)*4)) { close(); return true; }
             }
         } else {
             if (hit(mx,my,sX,sY)) { if (btn == 0) { VisualModule.esp = !VisualModule.esp; return true; } }
@@ -190,7 +191,8 @@ public class MenuScreen extends Screen {
             if (btn == 0) {
                 if (hit(mx,my,sX,sY+(ROWH+GAP)*4)) { VisualModule.hud = !VisualModule.hud; return true; }
                 if (hit(mx,my,sX2,sY)) { VisualModule.fullbright = !VisualModule.fullbright; return true; }
-                if (hit(mx,my,sX2,sY+(ROWH+GAP)*3)) { close(); return true; }
+                if (hit(mx,my,sX2,sY+(ROWH+GAP))) { VisualModule.optimized = !VisualModule.optimized; return true; }
+                if (hit(mx,my,sX2,sY+(ROWH+GAP)*4)) { close(); return true; }
             }
         }
         return false;

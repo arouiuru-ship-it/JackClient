@@ -179,17 +179,15 @@ public class VisualModule implements ClientModInitializer {
     private static Entity findTarget() {
         MinecraftClient c = MinecraftClient.getInstance();
         if (c.player == null || c.world == null) return null;
-        List<Entity> targets = new ArrayList<>();
+        Entity best = null;
+        double bestDist = auraRange;
         for (Entity e : c.world.getEntities()) {
             if (e == c.player || !e.isAlive() || !(e instanceof LivingEntity)) continue;
             if (targetPlayersOnly && !(e instanceof PlayerEntity)) continue;
             double d = c.player.distanceTo(e);
-            if (d > auraRange) continue;
-            targets.add(e);
+            if (d < bestDist) { bestDist = d; best = e; }
         }
-        if (targets.isEmpty()) return null;
-        targets.sort(Comparator.comparingDouble(e -> Math.abs(MathHelper.wrapDegrees(getYawTo(e) - c.player.getYaw()))));
-        return targets.get(0);
+        return best;
     }
 
     private static float getYawTo(Entity e) {
