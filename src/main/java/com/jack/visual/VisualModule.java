@@ -35,6 +35,7 @@ public class VisualModule implements ClientModInitializer {
     public static double auraRange = 3.5;
     public static int auraCps = 10;
     public static String lastTarget = null;
+    public static float handScale = 1.0f, handSwingSpeed = 1.0f, handWaveIntensity = 0.5f;
 
     private static final MinecraftClient mc = MinecraftClient.getInstance();
     private static int attackTick = 0;
