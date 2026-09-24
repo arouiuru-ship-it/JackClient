@@ -126,48 +126,24 @@ public class VisualModule implements ClientModInitializer {
                 }
             }
 
-            if (!killAura) { attackTick = 0; lastTarget = null; return; }
+            if (!killAura) { lastTarget = null; return; }
 
+            // ==== SIMPLE KILLAURA ====
             Entity t = findTarget();
-            if (t == null) { attackTick = 0; lastTarget = null; return; }
+            if (t == null) { lastTarget = null; return; }
             if (t instanceof LivingEntity le) lastTarget = le.getName().getString();
 
             // Смотрим на цель
-            float yawTo = getYawTo(t);
-            float pitchTo = getPitchTo(t, c.player);
-            c.player.setYaw(c.player.getYaw() + MathHelper.wrapDegrees(yawTo - c.player.getYaw()) * 0.6f);
-            c.player.setPitch(c.player.getPitch() + (pitchTo - c.player.getPitch()) * 0.6f);
+            double dx = t.getX() - c.player.getX();
+            double dy = t.getEyeY() - c.player.getEyeY();
+            double dz = t.getZ() - c.player.getZ();
+            float yaw = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0F);
+            float pitch = (float)(-Math.toDegrees(Math.atan2(dy, Math.sqrt(dx*dx + dz*dz))));
+            c.player.setYaw(yaw);
+            c.player.setPitch(pitch);
 
-            attackTick++;
-            int delay = cpsEnabled ? Math.max(1, 20 / auraCps) : 1;
-            if (attackTick < delay) return;
-            attackTick = 0;
-
-            // КРИТЫ — метод Meteor (реальный прыжок + атака в падении)
-            if (critMode.equals("Jump")) {
-                if (c.player.isOnGround()) {
-                    c.player.jump();
-                } else if (c.player.fallDistance > 0.0F && c.player.getVelocity().y < 0.0) {
-                    if (c.interactionManager != null) {
-                        c.interactionManager.attackEntity(c.player, t);
-                        c.player.swingHand(Hand.MAIN_HAND);
-                    }
-                }
-            } else if (critMode.equals("Packet")) {
-                // Фейковое падение через пакеты
-                if (c.player.isOnGround()) {
-                    double px = c.player.getX(), py = c.player.getY(), pz = c.player.getZ();
-                    if (c.player.networkHandler != null) {
-                        c.player.networkHandler.sendPacket(new net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket.PositionAndOnGround(px, py + 0.0625, pz, false, false));
-                        c.player.networkHandler.sendPacket(new net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket.PositionAndOnGround(px, py, pz, false, false));
-                    }
-                    c.player.fallDistance = 0.1F;
-                    if (c.interactionManager != null) {
-                        c.interactionManager.attackEntity(c.player, t);
-                        c.player.swingHand(Hand.MAIN_HAND);
-                    }
-                }
-            } else {
+            // Атака через натуральный кулдаун (работает всегда)
+            if (c.player.getAttackCooldownProgress(0.0f) >= 1.0f) {
                 if (c.interactionManager != null) {
                     c.interactionManager.attackEntity(c.player, t);
                     c.player.swingHand(Hand.MAIN_HAND);
@@ -180,7 +156,7 @@ public class VisualModule implements ClientModInitializer {
         MinecraftClient c = MinecraftClient.getInstance();
         if (c.player == null || c.world == null) return null;
         Entity best = null;
-        double bestDist = auraRange;
+        double bestDist = 6.0;
         for (Entity e : c.world.getEntities()) {
             if (e == c.player || !e.isAlive() || !(e instanceof LivingEntity)) continue;
             if (targetPlayersOnly && !(e instanceof PlayerEntity)) continue;
