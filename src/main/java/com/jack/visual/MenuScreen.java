@@ -9,15 +9,11 @@ public class MenuScreen extends Screen {
     public MenuScreen() { super(Text.literal("JackClient")); }
     private String st(boolean b) { return b ? "§aON" : "§cOFF"; }
     private static final MinecraftClient mc = MinecraftClient.getInstance();
-
     private static final int PW = 420, PH = 230;
     private static final int COLW = 132, ROWH = 22, GAP = 6;
     private static final int TABW = 100, TABH = 20;
-
     private int px, py;
     private static int tab = 0;
-    private static boolean killAuraSub = false;
-    private static boolean waveSub = false;
 
     @Override
     public void renderBackground(DrawContext ctx, int mx, int my, float d) { }
@@ -26,7 +22,6 @@ public class MenuScreen extends Screen {
     public void render(DrawContext ctx, int mx, int my, float d) {
         ctx.fill(0, 0, width, height, 0x77000000);
         px = (width - PW) / 2; py = (height - PH) / 2;
-
         ctx.fill(px - 2, py - 2, px + PW + 2, py + PH + 2, 0xFF0A0A0A);
         ctx.fill(px, py, px + PW, py + PH, 0xFF171717);
         ctx.fill(px, py, px + PW, py + 1, 0xFF00FF88);
@@ -34,10 +29,7 @@ public class MenuScreen extends Screen {
         ctx.fill(px, py, px + 1, py + PH, 0xFF00FF88);
         ctx.fill(px + PW - 1, py, px + PW, py + PH, 0xFF00FF88);
 
-        if (killAuraSub) { renderKillAuraSub(ctx, mx, my); return; }
-        if (waveSub) { renderWaveSub(ctx, mx, my); return; }
-
-        ctx.drawCenteredTextWithShadow(textRenderer, "§a§lJACK §f§lCLIENT §7v2.2", px + PW / 2, py + 6, 0xFFFFFF);
+        ctx.drawCenteredTextWithShadow(textRenderer, "§a§lJACK §f§lCLIENT §7v2.3", px + PW / 2, py + 6, 0xFFFFFF);
         ctx.fill(px + 8, py + 18, px + PW - 8, py + 19, 0xFF303030);
 
         int tabY = py + 24;
@@ -48,9 +40,8 @@ public class MenuScreen extends Screen {
         int sX2 = sX + COLW + GAP;
 
         if (tab == 0) {
-            // ===== COMBAT =====
             drawBtn(ctx, mx, my, sX, sY, "KillAura " + st(VisualModule.killAura), VisualModule.killAura);
-            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP), "Crit Mode §e" + VisualModule.critMode, !VisualModule.critMode.equals("Off"));
+            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP), "Crit §e" + VisualModule.critMode, !VisualModule.critMode.equals("Off"));
             drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*2, "Aim Assist " + st(VisualModule.aimAssist), VisualModule.aimAssist);
             drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*3, "Smooth §e" + String.format("%.2f", VisualModule.aimSmooth), false);
             drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*4, "Reach §e" + String.format("%.1f", VisualModule.auraRange), false);
@@ -61,48 +52,18 @@ public class MenuScreen extends Screen {
             drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*3, "CPS " + st(VisualModule.cpsEnabled) + " §e" + VisualModule.auraCps, VisualModule.cpsEnabled);
             drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*4, "§cClose", false);
         } else {
-            // ===== VISUAL =====
             drawBtn(ctx, mx, my, sX, sY, "PlayerESP " + st(VisualModule.esp), VisualModule.esp);
-            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP), "Tracers " + st(VisualModule.tracers), VisualModule.tracers);
-            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*2, "JumpCircle " + st(VisualModule.jumpCircle), VisualModule.jumpCircle);
-            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*3, "Crosshair " + st(VisualModule.customCrosshair), VisualModule.customCrosshair);
-            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*4, "TotemCounter " + st(VisualModule.totemCounter), VisualModule.totemCounter);
+            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP), "TargetHUD " + st(VisualModule.targetHud), VisualModule.targetHud);
+            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*2, "Fullbright " + st(VisualModule.fullbright), VisualModule.fullbright);
+            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*3, "HUD " + st(VisualModule.hud), VisualModule.hud);
+            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*4, "Optimized " + st(VisualModule.optimized), VisualModule.optimized);
 
-            drawBtn(ctx, mx, my, sX2, sY, "TargetHUD " + st(VisualModule.targetHud), VisualModule.targetHud);
-            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP), "View models " + st(VisualModule.waveModel), VisualModule.waveModel);
-            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*2, "Fullbright " + st(VisualModule.fullbright), VisualModule.fullbright);
-            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*3, "Optimized " + st(VisualModule.optimized), VisualModule.optimized);
+            drawBtn(ctx, mx, my, sX2, sY, "View models §aON", false);
+            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP), "§7(settings soon)", false);
+            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*2, "§7FPS: §f" + mc.getCurrentFps(), false);
+            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*3, "§7Target: §f" + (VisualModule.lastTarget != null ? VisualModule.lastTarget : "none"), false);
             drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*4, "§cClose", false);
         }
-    }
-
-    private void renderKillAuraSub(DrawContext ctx, int mx, int my) {
-        ctx.drawCenteredTextWithShadow(textRenderer, "§a§lKILLAURA §f§lSETTINGS", px + PW / 2, py + 6, 0xFFFFFF);
-        ctx.fill(px + 8, py + 18, px + PW - 8, py + 19, 0xFF303030);
-        int sX = px + 8, sY = py + 40;
-        int sX2 = sX + COLW + GAP;
-        drawBtn(ctx, mx, my, sX, sY, "Crit Mode §e" + VisualModule.critMode, !VisualModule.critMode.equals("Off"));
-        drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP), "Reach §e" + String.format("%.1f", VisualModule.auraRange), false);
-        drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*2, "CPS §e" + VisualModule.auraCps, false);
-        drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*3, "Target: " + (VisualModule.targetPlayersOnly ? "Players" : "All"), false);
-        drawBtn(ctx, mx, my, sX2, sY, "§7Crit: Jump/Packet/Off", false);
-        drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP), "§7Reach: 3.0 - 6.0", false);
-        drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*2, "§7CPS: 2 - 20", false);
-        drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*3, "§c◀ Back", false);
-    }
-
-    private void renderWaveSub(DrawContext ctx, int mx, int my) {
-        ctx.drawCenteredTextWithShadow(textRenderer, "§a§lVIEW MODELS §f§lSETTINGS", px + PW / 2, py + 6, 0xFFFFFF);
-        ctx.fill(px + 8, py + 18, px + PW - 8, py + 19, 0xFF303030);
-        int sX = px + 8, sY = py + 40;
-        int sX2 = sX + COLW + GAP;
-        drawBtn(ctx, mx, my, sX, sY, "Hand Scale §e" + String.format("%.2f", VisualModule.handScale), false);
-        drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP), "Swing Speed §e" + String.format("%.2f", VisualModule.handSwingSpeed), false);
-        drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*2, "Wave Intensity §e" + String.format("%.2f", VisualModule.handWaveIntensity), false);
-        drawBtn(ctx, mx, my, sX2, sY, "§7Scale: 0.5 - 1.5", false);
-        drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP), "§7Swing: 0.5 - 2.0", false);
-        drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*2, "§7Wave: 0.0 - 1.0", false);
-        drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*3, "§c◀ Back", false);
     }
 
     private void drawTab(DrawContext ctx, int mx, int my, int x, int y, String label, boolean active) {
@@ -127,77 +88,33 @@ public class MenuScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int btn) {
+        if (btn != 0) return false;
         px = (width - PW) / 2; py = (height - PH) / 2;
-
-        if (killAuraSub) {
-            if (btn == 1) { killAuraSub = false; return true; }
-            if (btn == 0) {
-                int sX = px + 8, sY = py + 40;
-                int sX2 = sX + COLW + GAP;
-                if (hit(mx,my,sX,sY)) { VisualModule.critMode = VisualModule.critMode.equals("Jump")?"Packet":(VisualModule.critMode.equals("Packet")?"Off":"Jump"); return true; }
-                if (hit(mx,my,sX,sY+(ROWH+GAP))) { VisualModule.auraRange += 0.5; if (VisualModule.auraRange > 6.0) VisualModule.auraRange = 3.0; return true; }
-                if (hit(mx,my,sX,sY+(ROWH+GAP)*2)) { VisualModule.auraCps++; if (VisualModule.auraCps > 20) VisualModule.auraCps = 2; return true; }
-                if (hit(mx,my,sX,sY+(ROWH+GAP)*3)) { VisualModule.targetPlayersOnly = !VisualModule.targetPlayersOnly; return true; }
-                if (hit(mx,my,sX2,sY+(ROWH+GAP)*3)) { killAuraSub = false; return true; }
-            }
-            return false;
-        }
-        if (waveSub) {
-            if (btn == 1) { waveSub = false; return true; }
-            if (btn == 0) {
-                int sX = px + 8, sY = py + 40;
-                int sX2 = sX + COLW + GAP;
-                if (hit(mx,my,sX,sY)) { VisualModule.handScale += 0.05f; if (VisualModule.handScale > 1.5f) VisualModule.handScale = 0.5f; return true; }
-                if (hit(mx,my,sX,sY+(ROWH+GAP))) { VisualModule.handSwingSpeed += 0.1f; if (VisualModule.handSwingSpeed > 2.0f) VisualModule.handSwingSpeed = 0.5f; return true; }
-                if (hit(mx,my,sX,sY+(ROWH+GAP)*2)) { VisualModule.handWaveIntensity += 0.05f; if (VisualModule.handWaveIntensity > 1.0f) VisualModule.handWaveIntensity = 0.0f; return true; }
-                if (hit(mx,my,sX2,sY+(ROWH+GAP)*3)) { waveSub = false; return true; }
-            }
-            return false;
-        }
-
         int tabY = py + 24;
-        if (btn == 0) {
-            if (hitW(mx, my, px + 8, tabY, TABW, TABH)) { tab = 0; return true; }
-            if (hitW(mx, my, px + 8 + TABW + 4, tabY, TABW, TABH)) { tab = 1; return true; }
-        }
+        if (hitW(mx, my, px + 8, tabY, TABW, TABH)) { tab = 0; return true; }
+        if (hitW(mx, my, px + 8 + TABW + 4, tabY, TABW, TABH)) { tab = 1; return true; }
 
         int sX = px + 8, sY = py + 50;
         int sX2 = sX + COLW + GAP;
 
         if (tab == 0) {
-            // KillAura: LMB toggle, RMB submenu
-            if (hit(mx,my,sX,sY)) {
-                if (btn == 0) { VisualModule.killAura = !VisualModule.killAura; return true; }
-                if (btn == 1) { killAuraSub = true; return true; }
-            }
-            // Crit: cycle Jump -> Packet -> Off
-            if (hit(mx,my,sX,sY+(ROWH+GAP))) {
-                if (btn == 0) { VisualModule.critMode = VisualModule.critMode.equals("Jump")?"Packet":(VisualModule.critMode.equals("Packet")?"Off":"Jump"); return true; }
-            }
-            if (btn == 0) {
-                if (hit(mx,my,sX,sY+(ROWH+GAP)*2)) { VisualModule.aimAssist = !VisualModule.aimAssist; return true; }
-                if (hit(mx,my,sX,sY+(ROWH+GAP)*3)) { VisualModule.aimSmooth += 0.05f; if (VisualModule.aimSmooth > 0.9f) VisualModule.aimSmooth = 0.05f; return true; }
-                if (hit(mx,my,sX,sY+(ROWH+GAP)*4)) { VisualModule.auraRange += 0.5; if (VisualModule.auraRange > 6.0) VisualModule.auraRange = 3.0; return true; }
-                if (hit(mx,my,sX2,sY)) { VisualModule.fly = !VisualModule.fly; return true; }
-                if (hit(mx,my,sX2,sY+(ROWH+GAP))) { VisualModule.autoSprint = !VisualModule.autoSprint; return true; }
-                if (hit(mx,my,sX2,sY+(ROWH+GAP)*2)) { VisualModule.noFall = !VisualModule.noFall; return true; }
-                if (hit(mx,my,sX2,sY+(ROWH+GAP)*3)) { VisualModule.cpsEnabled = !VisualModule.cpsEnabled; return true; }
-                if (hit(mx,my,sX2,sY+(ROWH+GAP)*4)) { close(); return true; }
-            }
+            if (hit(mx,my,sX,sY)) { VisualModule.killAura = !VisualModule.killAura; return true; }
+            if (hit(mx,my,sX,sY+(ROWH+GAP))) { VisualModule.critMode = VisualModule.critMode.equals("Jump")?"Packet":(VisualModule.critMode.equals("Packet")?"Off":"Jump"); return true; }
+            if (hit(mx,my,sX,sY+(ROWH+GAP)*2)) { VisualModule.aimAssist = !VisualModule.aimAssist; return true; }
+            if (hit(mx,my,sX,sY+(ROWH+GAP)*3)) { VisualModule.aimSmooth += 0.05f; if (VisualModule.aimSmooth > 0.9f) VisualModule.aimSmooth = 0.05f; return true; }
+            if (hit(mx,my,sX,sY+(ROWH+GAP)*4)) { VisualModule.auraRange += 0.5; if (VisualModule.auraRange > 6.0) VisualModule.auraRange = 3.0; return true; }
+            if (hit(mx,my,sX2,sY)) { VisualModule.fly = !VisualModule.fly; return true; }
+            if (hit(mx,my,sX2,sY+(ROWH+GAP))) { VisualModule.autoSprint = !VisualModule.autoSprint; return true; }
+            if (hit(mx,my,sX2,sY+(ROWH+GAP)*2)) { VisualModule.noFall = !VisualModule.noFall; return true; }
+            if (hit(mx,my,sX2,sY+(ROWH+GAP)*3)) { VisualModule.cpsEnabled = !VisualModule.cpsEnabled; return true; }
+            if (hit(mx,my,sX2,sY+(ROWH+GAP)*4)) { close(); return true; }
         } else {
-            if (btn == 0) {
-                if (hit(mx,my,sX,sY)) { VisualModule.esp = !VisualModule.esp; return true; }
-                if (hit(mx,my,sX,sY+(ROWH+GAP))) { VisualModule.tracers = !VisualModule.tracers; return true; }
-                if (hit(mx,my,sX,sY+(ROWH+GAP)*2)) { VisualModule.jumpCircle = !VisualModule.jumpCircle; return true; }
-                if (hit(mx,my,sX,sY+(ROWH+GAP)*3)) { VisualModule.customCrosshair = !VisualModule.customCrosshair; return true; }
-                if (hit(mx,my,sX,sY+(ROWH+GAP)*4)) { VisualModule.totemCounter = !VisualModule.totemCounter; return true; }
-                if (hit(mx,my,sX2,sY)) { VisualModule.targetHud = !VisualModule.targetHud; return true; }
-                if (hit(mx,my,sX2,sY+(ROWH+GAP))) { VisualModule.waveModel = !VisualModule.waveModel; return true; }
-                if (hit(mx,my,sX2,sY+(ROWH+GAP)*2)) { VisualModule.fullbright = !VisualModule.fullbright; return true; }
-                if (hit(mx,my,sX2,sY+(ROWH+GAP)*3)) { VisualModule.optimized = !VisualModule.optimized; return true; }
-                if (hit(mx,my,sX2,sY+(ROWH+GAP)*4)) { close(); return true; }
-            }
-            if (btn == 1 && hit(mx,my,sX2,sY+(ROWH+GAP))) { waveSub = true; return true; }
+            if (hit(mx,my,sX,sY)) { VisualModule.esp = !VisualModule.esp; return true; }
+            if (hit(mx,my,sX,sY+(ROWH+GAP))) { VisualModule.targetHud = !VisualModule.targetHud; return true; }
+            if (hit(mx,my,sX,sY+(ROWH+GAP)*2)) { VisualModule.fullbright = !VisualModule.fullbright; return true; }
+            if (hit(mx,my,sX,sY+(ROWH+GAP)*3)) { VisualModule.hud = !VisualModule.hud; return true; }
+            if (hit(mx,my,sX,sY+(ROWH+GAP)*4)) { VisualModule.optimized = !VisualModule.optimized; return true; }
+            if (hit(mx,my,sX2,sY+(ROWH+GAP)*4)) { close(); return true; }
         }
         return false;
     }
