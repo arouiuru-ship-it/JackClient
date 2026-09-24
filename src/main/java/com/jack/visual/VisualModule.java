@@ -28,6 +28,7 @@ public class VisualModule implements ClientModInitializer {
     public static boolean killAura = false, fly = false, autoSprint = false;
     public static boolean fullbright = false, aimAssist = false, hud = true, esp = false;
     public static boolean waveModel = true, targetHud = true, targetPlayersOnly = false;
+    public static boolean tracers = false, customSky = false, selfNametag = false;
     public static boolean noFall = false, cpsEnabled = true, optimized = true;
     public static String critMode = "Jump";   // Jump по умолчанию — самый надёжный
     public static float aimSmooth = 0.15f;
