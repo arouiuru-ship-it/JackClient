@@ -77,9 +77,4 @@ public class TitleScreenMixin {
         int cw = tr.getWidth(cr);
         ctx.drawTextWithShadow(tr, Text.literal(cr), w - cw - 16, h - 22, 0xFFFFFF);
     }
-
-    @Inject(method = "renderLogo", at = @At("HEAD"), cancellable = true)
-    private void jackRemoveLogo(DrawContext ctx, int mouseX, int mouseY, float delta, CallbackInfo ci) {
-        ci.cancel();
-    }
 }
