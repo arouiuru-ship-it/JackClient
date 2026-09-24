@@ -15,8 +15,9 @@ public class MenuScreen extends Screen {
     private static final int TABW = 100, TABH = 20;
 
     private int px, py;
-    private static int tab = 0;                 // 0=Combat, 1=Visual
-    private static boolean killAuraSub = false; // подменю KillAura
+    private static int tab = 0;
+    private static boolean killAuraSub = false;
+    private static boolean waveSub = false;
 
     @Override
     public void renderBackground(DrawContext ctx, int mx, int my, float d) { }
@@ -26,7 +27,6 @@ public class MenuScreen extends Screen {
         ctx.fill(0, 0, width, height, 0x77000000);
         px = (width - PW) / 2; py = (height - PH) / 2;
 
-        // Рамка
         ctx.fill(px - 2, py - 2, px + PW + 2, py + PH + 2, 0xFF0A0A0A);
         ctx.fill(px, py, px + PW, py + PH, 0xFF171717);
         ctx.fill(px, py, px + PW, py + 1, 0xFF00FF88);
@@ -34,16 +34,12 @@ public class MenuScreen extends Screen {
         ctx.fill(px, py, px + 1, py + PH, 0xFF00FF88);
         ctx.fill(px + PW - 1, py, px + PW, py + PH, 0xFF00FF88);
 
-        if (killAuraSub) {
-            renderKillAuraSub(ctx, mx, my);
-            return;
-        }
+        if (killAuraSub) { renderKillAuraSub(ctx, mx, my); return; }
+        if (waveSub) { renderWaveSub(ctx, mx, my); return; }
 
-        // Заголовок
         ctx.drawCenteredTextWithShadow(textRenderer, "§a§lJACK §f§lCLIENT §7v1.8", px + PW / 2, py + 6, 0xFFFFFF);
         ctx.fill(px + 8, py + 18, px + PW - 8, py + 19, 0xFF303030);
 
-        // Вкладки
         int tabY = py + 24;
         drawTab(ctx, mx, my, px + 8, tabY, "COMBAT", tab == 0);
         drawTab(ctx, mx, my, px + 8 + TABW + 4, tabY, "VISUAL", tab == 1);
@@ -52,22 +48,22 @@ public class MenuScreen extends Screen {
         int sX2 = sX + COLW + GAP;
 
         if (tab == 0) {
-            // ===== COMBAT =====
             drawBtn(ctx, mx, my, sX, sY, "KillAura " + st(VisualModule.killAura), VisualModule.killAura);
-            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP), "§7LMB toggle §8| §7RMB settings", false);
+            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP), "§7RMB for settings", false);
             drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*2, "Aim Assist " + st(VisualModule.aimAssist), VisualModule.aimAssist);
             drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*3, "Smooth §e" + String.format("%.2f", VisualModule.aimSmooth), false);
+            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*4, "CPS " + st(VisualModule.cpsEnabled) + " §e" + VisualModule.auraCps, VisualModule.cpsEnabled);
 
             drawBtn(ctx, mx, my, sX2, sY, "Fly " + st(VisualModule.fly), VisualModule.fly);
             drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP), "AutoSprint " + st(VisualModule.autoSprint), VisualModule.autoSprint);
             drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*2, "NoFall " + st(VisualModule.noFall), VisualModule.noFall);
             drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*3, "§cClose", false);
         } else {
-            // ===== VISUAL =====
             drawBtn(ctx, mx, my, sX, sY, "PlayerESP " + st(VisualModule.esp), VisualModule.esp);
             drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP), "TargetHUD " + st(VisualModule.targetHud), VisualModule.targetHud);
             drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*2, "Wave Model " + st(VisualModule.waveModel), VisualModule.waveModel);
-            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*3, "HUD " + st(VisualModule.hud), VisualModule.hud);
+            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*3, "§7RMB for settings", false);
+            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*4, "HUD " + st(VisualModule.hud), VisualModule.hud);
 
             drawBtn(ctx, mx, my, sX2, sY, "Fullbright " + st(VisualModule.fullbright), VisualModule.fullbright);
             drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP), "§7FPS: §f" + mc.getCurrentFps(), false);
@@ -91,7 +87,24 @@ public class MenuScreen extends Screen {
         drawBtn(ctx, mx, my, sX2, sY, "§7Crit: Packet/Jump/Off", false);
         drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP), "§7Reach: 3.0 - 6.0 blocks", false);
         drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*2, "§7CPS: 2 - 20", false);
-        drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*3, "§c◀ Back to Combat", false);
+        drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*3, "§c◀ Back", false);
+    }
+
+    private void renderWaveSub(DrawContext ctx, int mx, int my) {
+        ctx.drawCenteredTextWithShadow(textRenderer, "§a§lWAVE §f§lSETTINGS", px + PW / 2, py + 6, 0xFFFFFF);
+        ctx.fill(px + 8, py + 18, px + PW - 8, py + 19, 0xFF303030);
+
+        int sX = px + 8, sY = py + 40;
+        int sX2 = sX + COLW + GAP;
+
+        drawBtn(ctx, mx, my, sX, sY, "Hand Scale §e" + String.format("%.2f", VisualModule.handScale), false);
+        drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP), "Swing Speed §e" + String.format("%.2f", VisualModule.handSwingSpeed), false);
+        drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*2, "Wave Intensity §e" + String.format("%.2f", VisualModule.handWaveIntensity), false);
+
+        drawBtn(ctx, mx, my, sX2, sY, "§7Hand Scale: 0.5 - 1.5", false);
+        drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP), "§7Swing Speed: 0.5 - 2.0", false);
+        drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*2, "§7Wave Intensity: 0.0 - 1.0", false);
+        drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*3, "§c◀ Back", false);
     }
 
     private void drawTab(DrawContext ctx, int mx, int my, int x, int y, String label, boolean active) {
@@ -118,9 +131,8 @@ public class MenuScreen extends Screen {
     public boolean mouseClicked(double mx, double my, int btn) {
         px = (width - PW) / 2; py = (height - PH) / 2;
 
-        // ===== ПОДМЕНЮ KILLAURA =====
         if (killAuraSub) {
-            if (btn == 1) { killAuraSub = false; return true; } // ПКМ закрывает
+            if (btn == 1) { killAuraSub = false; return true; }
             if (btn == 0) {
                 int sX = px + 8, sY = py + 40;
                 int sX2 = sX + COLW + GAP;
@@ -132,8 +144,19 @@ public class MenuScreen extends Screen {
             }
             return false;
         }
+        if (waveSub) {
+            if (btn == 1) { waveSub = false; return true; }
+            if (btn == 0) {
+                int sX = px + 8, sY = py + 40;
+                int sX2 = sX + COLW + GAP;
+                if (hit(mx,my,sX,sY)) { VisualModule.handScale += 0.05f; if (VisualModule.handScale > 1.5f) VisualModule.handScale = 0.5f; return true; }
+                if (hit(mx,my,sX,sY+(ROWH+GAP))) { VisualModule.handSwingSpeed += 0.1f; if (VisualModule.handSwingSpeed > 2.0f) VisualModule.handSwingSpeed = 0.5f; return true; }
+                if (hit(mx,my,sX,sY+(ROWH+GAP)*2)) { VisualModule.handWaveIntensity += 0.05f; if (VisualModule.handWaveIntensity > 1.0f) VisualModule.handWaveIntensity = 0.0f; return true; }
+                if (hit(mx,my,sX2,sY+(ROWH+GAP)*3)) { waveSub = false; return true; }
+            }
+            return false;
+        }
 
-        // ===== ВКЛАДКИ =====
         int tabY = py + 24;
         if (btn == 0) {
             if (hitW(mx, my, px + 8, tabY, TABW, TABH)) { tab = 0; return true; }
@@ -144,7 +167,6 @@ public class MenuScreen extends Screen {
         int sX2 = sX + COLW + GAP;
 
         if (tab == 0) {
-            // KillAura: LMB toggle, RMB submenu
             if (hit(mx,my,sX,sY)) {
                 if (btn == 0) { VisualModule.killAura = !VisualModule.killAura; return true; }
                 if (btn == 1) { killAuraSub = true; return true; }
@@ -152,17 +174,21 @@ public class MenuScreen extends Screen {
             if (btn == 0) {
                 if (hit(mx,my,sX,sY+(ROWH+GAP)*2)) { VisualModule.aimAssist = !VisualModule.aimAssist; return true; }
                 if (hit(mx,my,sX,sY+(ROWH+GAP)*3)) { VisualModule.aimSmooth += 0.05f; if (VisualModule.aimSmooth > 0.9f) VisualModule.aimSmooth = 0.05f; return true; }
+                if (hit(mx,my,sX,sY+(ROWH+GAP)*4)) { VisualModule.cpsEnabled = !VisualModule.cpsEnabled; return true; }
                 if (hit(mx,my,sX2,sY)) { VisualModule.fly = !VisualModule.fly; return true; }
                 if (hit(mx,my,sX2,sY+(ROWH+GAP))) { VisualModule.autoSprint = !VisualModule.autoSprint; return true; }
                 if (hit(mx,my,sX2,sY+(ROWH+GAP)*2)) { VisualModule.noFall = !VisualModule.noFall; return true; }
                 if (hit(mx,my,sX2,sY+(ROWH+GAP)*3)) { close(); return true; }
             }
         } else {
+            if (hit(mx,my,sX,sY)) { if (btn == 0) { VisualModule.esp = !VisualModule.esp; return true; } }
+            if (hit(mx,my,sX,sY+(ROWH+GAP))) { if (btn == 0) { VisualModule.targetHud = !VisualModule.targetHud; return true; } }
+            if (hit(mx,my,sX,sY+(ROWH+GAP)*2)) {
+                if (btn == 0) { VisualModule.waveModel = !VisualModule.waveModel; return true; }
+                if (btn == 1) { waveSub = true; return true; }
+            }
             if (btn == 0) {
-                if (hit(mx,my,sX,sY)) { VisualModule.esp = !VisualModule.esp; return true; }
-                if (hit(mx,my,sX,sY+(ROWH+GAP))) { VisualModule.targetHud = !VisualModule.targetHud; return true; }
-                if (hit(mx,my,sX,sY+(ROWH+GAP)*2)) { VisualModule.waveModel = !VisualModule.waveModel; return true; }
-                if (hit(mx,my,sX,sY+(ROWH+GAP)*3)) { VisualModule.hud = !VisualModule.hud; return true; }
+                if (hit(mx,my,sX,sY+(ROWH+GAP)*4)) { VisualModule.hud = !VisualModule.hud; return true; }
                 if (hit(mx,my,sX2,sY)) { VisualModule.fullbright = !VisualModule.fullbright; return true; }
                 if (hit(mx,my,sX2,sY+(ROWH+GAP)*3)) { close(); return true; }
             }

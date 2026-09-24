@@ -24,13 +24,17 @@ public class VisualModule implements ClientModInitializer {
     public static boolean killAura = false, fly = false, autoSprint = false;
     public static boolean fullbright = false, aimAssist = false, hud = true, esp = false;
     public static boolean waveModel = true, targetHud = true, targetPlayersOnly = false;
+    public static boolean noFall = false, cpsEnabled = true;
     public static String critMode = "Packet";
     public static float aimSmooth = 0.15f;
     public static float flySpeed = 0.05f;
     public static double auraRange = 3.0;
     public static int auraCps = 10;
-    public static boolean noFall = false;
+    public static float handScale = 1.0f;
+    public static float handSwingSpeed = 1.0f;
+    public static float handWaveIntensity = 0.5f;
     public static String lastTarget = null;
+
     private static final MinecraftClient mc = MinecraftClient.getInstance();
     private static int attackTick = 0;
     private static boolean rshiftHeld = false;
@@ -46,10 +50,10 @@ public class VisualModule implements ClientModInitializer {
                 int x = 6, y = 6;
                 ctx.fill(x - 3, y - 3, x + 130, y + 56, 0x66000000);
                 ctx.fill(x - 3, y - 3, x + 130, y - 1, 0xFF00AA55);
-                ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§a§lJack §fv1.6"), x, y, 0xFFFFFF); y += 12;
+                ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§a§lJack §fv1.8"), x, y, 0xFFFFFF); y += 12;
                 ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§7FPS §f" + mc.getCurrentFps() + " §7XYZ §f" + String.format("%.0f %.0f %.0f", mc.player.getX(), mc.player.getY(), mc.player.getZ())), x, y, 0xFFFFFF); y += 12;
                 ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§7KA " + (killAura ? "§a●" : "§c●") + " §7Crit §f" + critMode + " §7ESP " + (esp ? "§a●" : "§c●")), x, y, 0xFFFFFF); y += 12;
-                ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§7Aim " + (aimAssist ? "§a●" : "§c●") + " §7Fly " + (fly ? "§a●" : "§c●") + " §7Sprint " + (autoSprint ? "§a●" : "§c●")), x, y, 0xFFFFFF);
+                ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§7Aim " + (aimAssist ? "§a●" : "§c●") + " §7Fly " + (fly ? "§a●" : "§c●")), x, y, 0xFFFFFF);
             }
             if (targetHud && killAura) {
                 Entity target = findTarget();
@@ -66,6 +70,7 @@ public class VisualModule implements ClientModInitializer {
                 }
             }
         });
+
         WorldRenderEvents.AFTER_ENTITIES.register(context -> {
             if (!esp || mc.world == null || mc.player == null) return;
             MatrixStack m = context.matrixStack();
@@ -109,17 +114,17 @@ public class VisualModule implements ClientModInitializer {
                     double dx = best.getX()-c.player.getX(), dy = best.getEyeY()-c.player.getEyeY(), dz = best.getZ()-c.player.getZ();
                     float ty = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0F);
                     float tp = (float)(-Math.toDegrees(Math.atan2(dy, Math.sqrt(dx*dx+dz*dz))));
-                    // ОЧЕНЬ плавное наведение
                     float sm = aimSmooth * 0.4f;
                     c.player.setYaw(c.player.getYaw() + wrap(ty - c.player.getYaw()) * sm);
                     c.player.setPitch(c.player.getPitch() + (tp - c.player.getPitch()) * sm);
                 }
             }
 
-            if (!killAura) { attackTick = 0; return; }
+            if (!killAura) { attackTick = 0; lastTarget = null; return; }
 
             Entity t = findTarget();
-            if (t == null) { attackTick = 0; return; }
+            if (t == null) { attackTick = 0; lastTarget = null; return; }
+            if (t instanceof LivingEntity le) lastTarget = le.getName().getString();
 
             if (waveModel) {
                 double wave = Math.sin(tickCounter * 0.2) * 0.05;
@@ -133,7 +138,7 @@ public class VisualModule implements ClientModInitializer {
             c.player.setPitch(c.player.getPitch() + (tp - c.player.getPitch()) * 0.6f);
 
             attackTick++;
-            int delay = Math.max(1, 20 / auraCps);
+            int delay = cpsEnabled ? Math.max(1, 20 / auraCps) : 1;
             if (attackTick < delay) return;
             attackTick = 0;
 
@@ -174,7 +179,6 @@ public class VisualModule implements ClientModInitializer {
             if (targetPlayersOnly && !(e instanceof PlayerEntity)) continue;
             double d = c.player.distanceTo(e);
             if (d > auraRange) continue;
-            // Приоритет — LowestHealth (как в Meteor)
             double hp = ((LivingEntity) e).getHealth();
             if (hp < bestHealth) { bestHealth = hp; best = e; }
         }
