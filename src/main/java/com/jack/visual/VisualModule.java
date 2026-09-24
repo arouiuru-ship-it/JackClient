@@ -18,13 +18,14 @@ import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
+import net.minecraft.util.math.MathHelper;
 import org.lwjgl.glfw.GLFW;
 
 public class VisualModule implements ClientModInitializer {
     public static boolean killAura = false, fly = false, autoSprint = false;
     public static boolean fullbright = false, aimAssist = false, hud = true, esp = false;
     public static boolean waveModel = true, targetHud = true, targetPlayersOnly = false;
-    public static boolean noFall = false, cpsEnabled = true;
+    public static boolean noFall = false, cpsEnabled = true, optimized = true;
     public static String critMode = "Packet";
     public static float aimSmooth = 0.15f;
     public static float flySpeed = 0.05f;
@@ -111,12 +112,20 @@ public class VisualModule implements ClientModInitializer {
             if (aimAssist) {
                 Entity best = findTarget();
                 if (best instanceof LivingEntity) {
-                    double dx = best.getX()-c.player.getX(), dy = best.getEyeY()-c.player.getEyeY(), dz = best.getZ()-c.player.getZ();
-                    float ty = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0F);
-                    float tp = (float)(-Math.toDegrees(Math.atan2(dy, Math.sqrt(dx*dx+dz*dz))));
-                    float sm = aimSmooth * 0.4f;
-                    c.player.setYaw(c.player.getYaw() + wrap(ty - c.player.getYaw()) * sm);
-                    c.player.setPitch(c.player.getPitch() + (tp - c.player.getPitch()) * sm);
+                    double dx = best.getX() - c.player.getX();
+                    double dy = (best.getY() + best.getEyeHeight(best.getPose()) / 2) - (c.player.getY() + c.player.getEyeHeight(c.player.getPose()));
+                    double dz = best.getZ() - c.player.getZ();
+                    float targetYaw = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0F);
+                    float targetPitch = (float)(-Math.toDegrees(Math.atan2(dy, Math.sqrt(dx*dx + dz*dz))));
+                    // Плавное наведение (по коду Meteor: speed * delta)
+                    float deltaYaw = MathHelper.wrapDegrees(targetYaw - c.player.getYaw());
+                    float deltaPitch = targetPitch - c.player.getPitch();
+                    float rotYaw = (float)(aimSmooth * (deltaYaw >= 0 ? 1 : -1) * 0.5f);
+                    if ((rotYaw >= 0 && rotYaw > deltaYaw) || (rotYaw < 0 && rotYaw < deltaYaw)) rotYaw = deltaYaw;
+                    c.player.setYaw(c.player.getYaw() + rotYaw);
+                    float rotPitch = (float)(aimSmooth * (deltaPitch >= 0 ? 1 : -1) * 0.5f);
+                    if ((rotPitch >= 0 && rotPitch > deltaPitch) || (rotPitch < 0 && rotPitch < deltaPitch)) rotPitch = deltaPitch;
+                    c.player.setPitch(c.player.getPitch() + rotPitch);
                 }
             }
 
@@ -131,10 +140,10 @@ public class VisualModule implements ClientModInitializer {
                 t.setPosition(t.getX(), t.getY() + wave, t.getZ());
             }
 
-            double dx = t.getX()-c.player.getX(), dy = t.getEyeY()-c.player.getEyeY(), dz = t.getZ()-c.player.getZ();
+            double dx = t.getX() - c.player.getX(), dy = t.getEyeY() - c.player.getEyeY(), dz = t.getZ() - c.player.getZ();
             float ty = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0F);
-            float tp = (float)(-Math.toDegrees(Math.atan2(dy, Math.sqrt(dx*dx+dz*dz))));
-            c.player.setYaw(c.player.getYaw() + wrap(ty - c.player.getYaw()) * 0.6f);
+            float tp = (float)(-Math.toDegrees(Math.atan2(dy, Math.sqrt(dx*dx + dz*dz))));
+            c.player.setYaw(c.player.getYaw() + MathHelper.wrapDegrees(ty - c.player.getYaw()) * 0.6f);
             c.player.setPitch(c.player.getPitch() + (tp - c.player.getPitch()) * 0.6f);
 
             attackTick++;

@@ -61,7 +61,7 @@ public class MenuScreen extends Screen {
         } else {
             drawBtn(ctx, mx, my, sX, sY, "PlayerESP " + st(VisualModule.esp), VisualModule.esp);
             drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP), "TargetHUD " + st(VisualModule.targetHud), VisualModule.targetHud);
-            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*2, "Wave Model " + st(VisualModule.waveModel), VisualModule.waveModel);
+            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*2, "View models " + st(VisualModule.waveModel), VisualModule.waveModel);
             drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*3, "§7RMB for settings", false);
             drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*4, "HUD " + st(VisualModule.hud), VisualModule.hud);
 
@@ -91,7 +91,7 @@ public class MenuScreen extends Screen {
     }
 
     private void renderWaveSub(DrawContext ctx, int mx, int my) {
-        ctx.drawCenteredTextWithShadow(textRenderer, "§a§lWAVE §f§lSETTINGS", px + PW / 2, py + 6, 0xFFFFFF);
+        ctx.drawCenteredTextWithShadow(textRenderer, "§a§lVIEW MODELS §f§lSETTINGS", px + PW / 2, py + 6, 0xFFFFFF);
         ctx.fill(px + 8, py + 18, px + PW - 8, py + 19, 0xFF303030);
 
         int sX = px + 8, sY = py + 40;
