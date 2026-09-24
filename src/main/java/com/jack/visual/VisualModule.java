@@ -56,10 +56,7 @@ public class VisualModule implements ClientModInitializer {
     private static double jumpCircleX, jumpCircleY, jumpCircleZ;
     private static float jumpCircleRadius = 0f;
     private static int jumpCircleLife = 0;
-    private static boolean jumpCircleActive = false;
     private static double jumpCircleX, jumpCircleY, jumpCircleZ;
-    private static float jumpCircleRadius = 0f;
-    private static int jumpCircleLife = 0;
 
     @Override
     public void onInitializeClient() {
