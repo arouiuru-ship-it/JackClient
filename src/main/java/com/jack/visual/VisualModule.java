@@ -150,7 +150,6 @@ public class VisualModule implements ClientModInitializer {
             if (autoSprint && c.player.forwardSpeed > 0 && !c.player.isSneaking() && !c.player.isUsingItem()) c.player.setSprinting(true);
             if (noFall) c.player.fallDistance = 0.0F;
 
-            // Aim Assist
             if (aimAssist) {
                 Entity best = pickTarget();
                 if (best instanceof LivingEntity) {
@@ -166,32 +165,33 @@ public class VisualModule implements ClientModInitializer {
                 }
             }
 
-            // ============ KILLAURA (метод Meteor) ============
+            // ============ KILLAURA (Meteor-style) ============
             if (!killAura) { lastTarget = null; return; }
 
             Entity t = pickTarget();
             if (t == null) { lastTarget = null; return; }
             if (t instanceof LivingEntity le) lastTarget = le.getName().getString();
 
-            // Ротация на цель — плавно, но с максимальным шагом
+            // Ротация (как в Meteor Rotations.rotate)
             rotateTo(c.player, t, aimSmooth);
 
-            // Проверка дистанции (как Meteor — по hitbox)
+            // Проверка дистанции (как в Meteor — по hitbox)
             double distSq = c.player.squaredDistanceTo(t);
             double reach = auraRange + 0.5;
             if (distSq > reach * reach) return;
 
-            // Атака через натуральный cooldown (как в Meteor)
-            if (c.player.getAttackCooldownProgress(0.0f) >= 0.9f) {
-                if (c.interactionManager != null) {
-                    c.interactionManager.attackEntity(c.player, t);
-                    c.player.swingHand(Hand.MAIN_HAND);
-                }
+            // Задержка атаки (как в Meteor delayCheck)
+            if (c.player.getAttackCooldownProgress(0.0f) < 0.9f) return;
+
+            // Атака
+            if (c.interactionManager != null) {
+                c.interactionManager.attackEntity(c.player, t);
+                c.player.swingHand(Hand.MAIN_HAND);
             }
         });
     }
 
-    // ===== TARGET PICKER (Meteor-style: sort by angle, then distance) =====
+    // ===== TARGET PICKER (Meteor-style: сортировка по углу) =====
     private static Entity pickTarget() {
         MinecraftClient c = MinecraftClient.getInstance();
         if (c.player == null || c.world == null) return null;
@@ -207,8 +207,6 @@ public class VisualModule implements ClientModInitializer {
             targets.add(e);
         }
         if (targets.isEmpty()) return null;
-
-        // Сортируем по углу (как в Meteor): цель с минимальным отклонением от взгляда
         targets.sort(Comparator.comparingDouble(e -> {
             float yawTo = getYawTo(e);
             float diff = Math.abs(MathHelper.wrapDegrees(yawTo - p.getYaw()));
@@ -224,7 +222,6 @@ public class VisualModule implements ClientModInitializer {
         float deltaYaw = MathHelper.wrapDegrees(targetYaw - p.getYaw());
         float deltaPitch = targetPitch - p.getPitch();
 
-        // Ограничиваем шаг, чтобы не было телепорта взгляда
         float maxYawStep = 30.0f;
         float maxPitchStep = 20.0f;
         if (deltaYaw > maxYawStep) deltaYaw = maxYawStep;
