@@ -13,7 +13,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(TitleScreen.class)
 public class TitleScreenMixin {
 
-    // Путь к твоей картинке. Кинь PNG в src/main/resources/assets/jack-visual/textures/bg.png
     private static final Identifier BG = Identifier.of("jack-visual", "textures/bg.png");
 
     @Inject(method = "renderBackground", at = @At("HEAD"), cancellable = true)
@@ -23,12 +22,11 @@ public class TitleScreenMixin {
         int w = s.width;
         int h = s.height;
 
-        // ===== ФОН =====
-        // Если картинка есть в ресурсах — рисуем её, растягивая на весь экран
+        // Рисуем картинку на весь экран (растягиваем)
         try {
-            // картинка временно отключена (API 1.21.4)
+            ctx.drawTexture(BG, 0, 0, 0, 0, w, h, w, h);
         } catch (Exception e) {
-            // Фолбэк — мягкий тёмно-синий градиент
+            // Если картинки нет — тёмно-синий градиент
             int steps = 40;
             for (int i = 0; i < steps; i++) {
                 float t = (float)i / steps;
@@ -36,15 +34,15 @@ public class TitleScreenMixin {
                 int g = (int)(0x18 + (0x08 - 0x18) * t);
                 int b = (int)(0x28 + (0x10 - 0x28) * t);
                 int col = 0xFF000000 | (r << 16) | (g << 8) | b;
-                ctx.fill(0, (int)(h * t), w, (int)(h * (t + 1.0f/steps)) + 1, col);
+                ctx.fill(0, (int)(h * t), w, (int)(h * (t + 1.0f / steps)) + 1, col);
             }
         }
 
-        // Лёгкое затемнение для читаемости текста
+        // Лёгкое затемнение сверху и снизу для читаемости кнопок
         ctx.fill(0, 0, w, 40, 0x55000000);
         ctx.fill(0, h - 30, w, h, 0x55000000);
 
-        // Мягкое зелёное свечение сверху
+        // Зелёные полоски по краям
         ctx.fill(0, 0, w, 1, 0xAA00FF88);
         ctx.fill(0, h - 1, w, h, 0xAA00FF88);
     }
@@ -58,7 +56,6 @@ public class TitleScreenMixin {
         int green = 0xFF00FF88;
         int pad = 6, len = 70, th = 2;
 
-        // Рамки по углам
         ctx.fill(pad, pad, pad + len, pad + th, green);
         ctx.fill(pad, pad, pad + th, pad + len, green);
         ctx.fill(w - pad - len, pad, w - pad, pad + th, green);
@@ -68,9 +65,8 @@ public class TitleScreenMixin {
         ctx.fill(w - pad - len, h - pad - th, w - pad, h - pad, green);
         ctx.fill(w - pad - th, h - pad - len, w - pad, h - pad, green);
 
-        // Тексты
         ctx.drawCenteredTextWithShadow(tr, Text.literal("§a§lJ A C K C L I E N T"), w / 2, 14, 0xFFFFFF);
-        ctx.drawCenteredTextWithShadow(tr, Text.literal("§7v1.6  §8•  §7Fabric 1.21.4"), w / 2, 28, 0xFFFFFF);
+        ctx.drawCenteredTextWithShadow(tr, Text.literal("§7v3.0  §8•  §7Fabric 1.21.4"), w / 2, 28, 0xFFFFFF);
         String hello = "§a● §fHello, §aAdmin";
         int hw = tr.getWidth(hello);
         ctx.drawTextWithShadow(tr, Text.literal(hello), w - hw - 16, 14, 0xFFFFFF);
