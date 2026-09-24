@@ -22,7 +22,7 @@ import org.lwjgl.glfw.GLFW;
 
 public class VisualModule implements ClientModInitializer {
     public static boolean killAura = false, aimAssist = false, cpsEnabled = true;
-    public static String critMode = "Jump";
+    public static String critMode = "Packet";
     public static float aimSmooth = 0.15f;
     public static double auraRange = 3.5;
     public static int auraCps = 10;
@@ -31,6 +31,11 @@ public class VisualModule implements ClientModInitializer {
     public static float flySpeed = 0.05f;
     public static boolean hud = true, esp = false, targetHud = true;
     public static boolean fullbright = false, optimized = true;
+    public static boolean jumpCircle = true, customCrosshair = true;
+    public static int crosshairColor = 0x00FF88;
+    public static float crosshairSize = 4f;
+    public static int crosshairGap = 3;
+    public static float jumpCircleRadiusMax = 1.5f;
     public static float handScale = 1.0f, handSwingSpeed = 1.0f, handWaveIntensity = 0.5f;
     public static String lastTarget = null;
 
@@ -38,11 +43,16 @@ public class VisualModule implements ClientModInitializer {
     private static int attackTick = 0;
     private static boolean rshiftHeld = false;
     private static float origGamma = 0f;
+    private static boolean jumpCircleActive = false;
+    private static double jumpCircleX = 0, jumpCircleY = 0, jumpCircleZ = 0;
+    private static float jumpCircleRadius = 0f;
+    private static int jumpCircleLife = 0;
 
     @Override
     public void onInitializeClient() {
         HudRenderCallback.EVENT.register((ctx, t) -> {
             if (mc.player == null || mc.options.hudHidden) return;
+
             if (hud) {
                 int x = 6, y = 6;
                 ctx.fill(x - 3, y - 3, x + 130, y + 56, 0x66000000);
@@ -52,6 +62,7 @@ public class VisualModule implements ClientModInitializer {
                 ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§7KA " + (killAura ? "§a●" : "§c●") + " §7Crit §f" + critMode + " §7ESP " + (esp ? "§a●" : "§c●")), x, y, 0xFFFFFF); y += 12;
                 ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§7Aim " + (aimAssist ? "§a●" : "§c●") + " §7Fly " + (fly ? "§a●" : "§c●")), x, y, 0xFFFFFF);
             }
+
             if (targetHud && killAura) {
                 Entity target = findTarget();
                 if (target instanceof LivingEntity le) {
@@ -66,19 +77,53 @@ public class VisualModule implements ClientModInitializer {
                     ctx.drawTextWithShadow(mc.textRenderer, Text.literal("§7HP: §f" + (int)hp + "/" + (int)maxHp + " §7Dist: §f" + String.format("%.1f", mc.player.distanceTo(le)) + "m"), tx + 4, ty + 30, 0xFFFFFF);
                 }
             }
+
+            // ===== CUSTOM CROSSHAIR =====
+            if (customCrosshair) {
+                int cx = ctx.getScaledWindowWidth() / 2;
+                int cy = ctx.getScaledWindowHeight() / 2;
+                int g = crosshairGap;
+                int s = (int)crosshairSize;
+                int col = 0xFF000000 | crosshairColor;
+                ctx.fill(cx - g - s, cy, cx - g, cy + 1, col);
+                ctx.fill(cx + g, cy, cx + g + s, cy + 1, col);
+                ctx.fill(cx, cy - g - s, cx + 1, cy - g, col);
+                ctx.fill(cx, cy + g, cx + 1, cy + g + s, col);
+                ctx.fill(cx, cy, cx + 1, cy + 1, col);
+            }
         });
 
         WorldRenderEvents.AFTER_ENTITIES.register(context -> {
-            if (!esp || mc.world == null || mc.player == null) return;
+            if (mc.world == null || mc.player == null) return;
             MatrixStack m = context.matrixStack();
             var cam = context.camera().getPos();
             VertexConsumerProvider.Immediate consumers = mc.getBufferBuilders().getEntityVertexConsumers();
-            VertexConsumer buf = consumers.getBuffer(RenderLayer.getLines());
-            for (Entity e : mc.world.getEntities()) {
-                if (!(e instanceof PlayerEntity) || e == mc.player || !e.isAlive()) continue;
-                Box b = e.getBoundingBox().offset(-cam.x, -cam.y, -cam.z);
-                VertexRendering.drawBox(m, buf, b, 1.0f, 0.15f, 0.15f, 1.0f);
+
+            if (esp) {
+                VertexConsumer buf = consumers.getBuffer(RenderLayer.getLines());
+                for (Entity e : mc.world.getEntities()) {
+                    if (!(e instanceof PlayerEntity) || e == mc.player || !e.isAlive()) continue;
+                    Box b = e.getBoundingBox().offset(-cam.x, -cam.y, -cam.z);
+                    VertexRendering.drawBox(m, buf, b, 1.0f, 0.15f, 0.15f, 1.0f);
+                }
             }
+
+            if (jumpCircle && jumpCircleActive && jumpCircleLife > 0) {
+                VertexConsumer buf = consumers.getBuffer(RenderLayer.getLines());
+                int segments = 20;
+                float r = jumpCircleRadius;
+                float alpha = Math.max(0f, jumpCircleLife / 20.0f);
+                for (int i = 0; i < segments; i++) {
+                    double a1 = (i / (double)segments) * Math.PI * 2;
+                    double a2 = ((i + 1) / (double)segments) * Math.PI * 2;
+                    float midX = (float)(jumpCircleX - cam.x + (Math.cos(a1) + Math.cos(a2)) / 2 * r);
+                    float midZ = (float)(jumpCircleZ - cam.z + (Math.sin(a1) + Math.sin(a2)) / 2 * r);
+                    float y = (float)(jumpCircleY - cam.y) + 0.05f;
+                    Box dot = new Box(midX - 0.06, y - 0.03, midZ - 0.06, midX + 0.06, y + 0.03, midZ + 0.06);
+                    VertexRendering.drawBox(m, buf, dot, 0.0f, 1.0f, 0.5f, alpha);
+                }
+            }
+
             consumers.draw();
         });
 
@@ -87,6 +132,23 @@ public class VisualModule implements ClientModInitializer {
             boolean pr = InputUtil.isKeyPressed(c.getWindow().getHandle(), GLFW.GLFW_KEY_RIGHT_SHIFT);
             if (pr && !rshiftHeld) { rshiftHeld = true; c.setScreen(new MenuScreen()); }
             if (!pr) rshiftHeld = false;
+
+            // ===== JUMP CIRCLE =====
+            if (jumpCircle) {
+                if (!c.player.isOnGround() && c.player.getVelocity().y > 0.1 && jumpCircleLife == 0) {
+                    jumpCircleActive = true;
+                    jumpCircleX = c.player.getX();
+                    jumpCircleY = c.player.getY();
+                    jumpCircleZ = c.player.getZ();
+                    jumpCircleRadius = 0.3f;
+                    jumpCircleLife = 20;
+                }
+                if (jumpCircleLife > 0) {
+                    jumpCircleLife--;
+                    jumpCircleRadius += (jumpCircleRadiusMax - 0.3f) / 20f;
+                    if (jumpCircleLife == 0) jumpCircleActive = false;
+                }
+            }
 
             if (fullbright) {
                 if (origGamma == 0f) origGamma = (float)c.options.getGamma().getValue().doubleValue();
@@ -137,28 +199,33 @@ public class VisualModule implements ClientModInitializer {
             if (attackTick < delay) return;
             attackTick = 0;
 
-            if (critMode.equals("Jump")) {
+            // ===== CRITS =====
+            if (critMode.equals("Packet")) {
+                // Фейковое падение через пакеты — работает на земле всегда
+                double px = c.player.getX(), py = c.player.getY(), pz = c.player.getZ();
+                if (c.player.networkHandler != null) {
+                    c.player.networkHandler.sendPacket(new net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket.PositionAndOnGround(px, py + 0.0625, pz, false, false));
+                    c.player.networkHandler.sendPacket(new net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket.PositionAndOnGround(px, py, pz, false, false));
+                }
+                c.player.fallDistance = 0.1F;
+                if (c.interactionManager != null) {
+                    c.interactionManager.attackEntity(c.player, t);
+                    c.player.swingHand(Hand.MAIN_HAND);
+                }
+            } else if (critMode.equals("Jump")) {
+                // На земле — прыгаем и ждём падения
                 if (c.player.isOnGround()) {
                     c.player.jump();
-                } else if (c.player.fallDistance > 0.0F && c.player.getVelocity().y < 0.0) {
+                }
+                // В падении — бьём с критом
+                if (!c.player.isOnGround() && c.player.fallDistance > 0.0F && c.player.getVelocity().y < 0.0) {
                     if (c.interactionManager != null) {
                         c.interactionManager.attackEntity(c.player, t);
                         c.player.swingHand(Hand.MAIN_HAND);
                     }
                 }
-            } else if (critMode.equals("Packet")) {
-                if (c.player.isOnGround() && !c.player.isSubmergedInWater() && !c.player.isInLava() && !c.player.isClimbing()) {
-                    double px = c.player.getX(), py = c.player.getY(), pz = c.player.getZ();
-                    if (c.player.networkHandler != null) {
-                        c.player.networkHandler.sendPacket(new net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket.PositionAndOnGround(px, py + 0.0625, pz, false, false));
-                        c.player.networkHandler.sendPacket(new net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket.PositionAndOnGround(px, py, pz, false, false));
-                    }
-                }
-                if (c.interactionManager != null) {
-                    c.interactionManager.attackEntity(c.player, t);
-                    c.player.swingHand(Hand.MAIN_HAND);
-                }
             } else {
+                // Обычный удар без крита
                 if (c.interactionManager != null) {
                     c.interactionManager.attackEntity(c.player, t);
                     c.player.swingHand(Hand.MAIN_HAND);
