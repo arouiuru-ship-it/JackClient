@@ -204,8 +204,8 @@ public class VisualModule implements ClientModInitializer {
                         double cx = c.player.getX() + (dx / dist) * step;
                         double cy = c.player.getY() + 0.1; // на уровне ног
                         double cz = c.player.getZ() + (dz / dist) * step;
-                        net.minecraft.util.math.BlockPos pos = net.minecraft.util.math.BlockPos.ofFloored(cx, cy, cz);
-                        net.minecraft.util.math.BlockPos posHead = net.minecraft.util.math.BlockPos.ofFloored(cx, cy + 1.0, cz);
+                        net.minecraft.util.math.BlockPos pos = new net.minecraft.util.math.BlockPos((int)Math.floor(cx), (int)Math.floor(cy), (int)Math.floor(cz));
+                        net.minecraft.util.math.BlockPos posHead = new net.minecraft.util.math.BlockPos((int)Math.floor(cx), (int)Math.floor(cy + 1.0), (int)Math.floor(cz));
                         net.minecraft.block.BlockState s1 = c.world.getBlockState(pos);
                         net.minecraft.block.BlockState s2 = c.world.getBlockState(posHead);
                         if (!s1.isAir() && !(s1.getBlock() instanceof net.minecraft.block.FluidBlock)) {
@@ -240,7 +240,7 @@ public class VisualModule implements ClientModInitializer {
                     // Автопрыжок если перед нами блок высотой 1
                     net.minecraft.util.math.Vec3d look = c.player.getRotationVec(1.0f);
                     net.minecraft.util.math.BlockPos ahead = c.player.getBlockPos().offset(
-                        net.minecraft.util.math.Direction.getFacing(look.x, 0, look.z));
+                        net.minecraft.util.math.Direction.getFacing(look.x, look.z));
                     if (!c.world.getBlockState(ahead).isAir() && c.world.getBlockState(ahead.up()).isAir() && c.player.isOnGround()) {
                         c.player.jump();
                     }
