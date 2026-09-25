@@ -142,88 +142,88 @@ public class VisualModule implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(c -> {
             if (c.player == null) return;
 
-            // ===== AUTO MINE (Smart AI) =====
+            // ===== AUTO MINE (умный AI) =====
             if (autoMine && c.world != null && c.interactionManager != null) {
-                if (autoMineTarget == null) autoMineTarget = findAutoMineBlock(c);
+                // ПРИОРИТЕТ 1: сначала собираем дропы
+                net.minecraft.entity.ItemEntity loot = null;
+                double lootDist = 8.0;
+                for (net.minecraft.entity.Entity e : c.world.getEntities()) {
+                    if (!(e instanceof net.minecraft.entity.ItemEntity)) continue;
+                    double d = c.player.distanceTo(e);
+                    if (d < lootDist) { lootDist = d; loot = (net.minecraft.entity.ItemEntity) e; }
+                }
+                if (loot != null) {
+                    // Идём к дропу
+                    double dx = loot.getX() - c.player.getX();
+                    double dz = loot.getZ() - c.player.getZ();
+                    float yaw = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0F);
+                    c.player.setYaw(yaw);
+                    c.player.setPitch(0);
+                    c.player.input.movementForward = 1.0f;
+                    c.player.input.movementSideways = 0.0f;
+                    c.player.setSprinting(true);
+                    autoMineTarget = null;
+                    return;
+                }
 
-                // Проверка цели - сломана?
+                // ПРИОРИТЕТ 2: ищем блок
+                if (autoMineTarget == null) autoMineTarget = findAutoMineBlock(c);
                 if (autoMineTarget != null) {
                     net.minecraft.block.BlockState st = c.world.getBlockState(autoMineTarget);
                     if (st.isAir() || !blockMatches(st)) autoMineTarget = null;
                 }
 
                 if (autoMineTarget != null) {
-                    net.minecraft.util.math.Vec3d targetCenter = net.minecraft.util.math.Vec3d.ofCenter(autoMineTarget);
-                    net.minecraft.util.math.Vec3d playerPos = c.player.getPos();
-                    double dist = playerPos.distanceTo(targetCenter);
+                    double dx = autoMineTarget.getX() + 0.5 - c.player.getX();
+                    double dy = autoMineTarget.getY() + 0.5 - (c.player.getY() + c.player.getEyeHeight(c.player.getPose()));
+                    double dz = autoMineTarget.getZ() + 0.5 - c.player.getZ();
+                    double dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
 
-                    // Смотрим на цель
-                    double dx = targetCenter.x - c.player.getX();
-                    double dy = targetCenter.y - (c.player.getY() + c.player.getEyeHeight(c.player.getPose()));
-                    double dz = targetCenter.z - c.player.getZ();
+                    // Смотрим на блок
                     float yaw = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0F);
                     float pitch = (float)(-Math.toDegrees(Math.atan2(dy, Math.sqrt(dx*dx + dz*dz))));
                     c.player.setYaw(yaw);
                     c.player.setPitch(pitch);
 
                     if (dist > 3.5) {
-                        // === AI ИДЁТ К БЛОКУ ===
-                        // Считаем угол к цели относительно текущего yaw
-                        float targetYaw = (float)(Math.atan2(dz, dx) * 180.0 / Math.PI) - 90f;
-                        float deltaYaw = MathHelper.wrapDegrees(targetYaw - c.player.getYaw());
-
-                        // Если цель прямо - идём вперёд
-                        if (Math.abs(deltaYaw) < 45f) {
-                            c.player.input.movementForward = 1.0f;
-                            c.player.input.movementSideways = 0.0f;
-                        } else if (deltaYaw > 0) {
-                            // Цель слева - стрейф влево
-                            c.player.input.movementForward = 0.5f;
-                            c.player.input.movementSideways = 1.0f;
-                        } else {
-                            // Цель справа - стрейф вправо
-                            c.player.input.movementForward = 0.5f;
-                            c.player.input.movementSideways = -1.0f;
-                        }
+                        // Идём к блоку
+                        c.player.input.movementForward = 1.0f;
+                        c.player.input.movementSideways = 0.0f;
                         c.player.setSprinting(true);
 
-                        // === ПРОВЕРКА ПУТИ ВПЕРЁД ===
-                        net.minecraft.util.math.Vec3d lookVec = c.player.getRotationVec(1.0f);
-                        net.minecraft.util.math.BlockPos front = c.player.getBlockPos().offset(
-                            net.minecraft.util.math.Direction.getFacing(lookVec.x, 0, lookVec.z));
+                        // Ищем блок ПЕРЕД нами, чтобы понять препятствие
+                        net.minecraft.util.math.Vec3d look = c.player.getRotationVec(1.0f);
+                        net.minecraft.util.math.BlockPos ahead = c.player.getBlockPos().offset(
+                            net.minecraft.util.math.Direction.getFacing(look.x, 0, look.z));
+                        net.minecraft.util.math.BlockPos aheadUp = ahead.up();
+                        net.minecraft.block.BlockState stateAhead = c.world.getBlockState(ahead);
+                        net.minecraft.block.BlockState stateAheadUp = c.world.getBlockState(aheadUp);
 
-                        net.minecraft.block.BlockState frontState = c.world.getBlockState(front);
-                        net.minecraft.block.BlockState frontUp = c.world.getBlockState(front.up());
-                        net.minecraft.block.BlockState frontUp2 = c.world.getBlockState(front.up(2));
+                        // Если на пути есть блок — ломаем именно его (не цель через стену)
+                        if (!stateAhead.isAir() && !(stateAhead.getBlock() instanceof net.minecraft.block.FluidBlock)) {
+                            float hardness = stateAhead.getHardness(c.world, ahead);
+                            if (hardness >= 0 && hardness < 10.0f) {
+                                // Сначала копаем блок перед нами
+                                c.player.setYaw((float)(Math.toDegrees(Math.atan2(ahead.getZ()+0.5 - c.player.getZ(), ahead.getX()+0.5 - c.player.getX())) - 90f));
+                                c.player.setPitch(0);
+                                c.interactionManager.updateBlockBreakingProgress(ahead, net.minecraft.util.math.Direction.UP);
+                                c.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
+                                // НЕ двигаемся, пока копаем
+                                c.player.input.movementForward = 0.0f;
+                                c.player.setSprinting(false);
+                                return;
+                            }
+                        }
 
-                        // 1. Если перед нами блок высотой 1 → прыжок
-                        if (!frontState.isAir() && frontUp.isAir() && c.player.isOnGround()) {
+                        // Если на пути блок высотой 1 — прыгаем
+                        if (!stateAhead.isAir() && stateAheadUp.isAir() && c.player.isOnGround()) {
                             c.player.jump();
                         }
-                        // 2. Если перед нами блок высотой 2+ → копаем его
-                        else if (!frontState.isAir() && !frontUp.isAir() && c.player.isOnGround()) {
-                            // Ломаем блок перед нами
-                            c.interactionManager.updateBlockBreakingProgress(front, net.minecraft.util.math.Direction.UP);
-                            c.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
-                        }
-                        // 3. Проверка блока НАД ногами (на голове)
-                        net.minecraft.util.math.BlockPos headPos = c.player.getBlockPos().up(2);
-                        net.minecraft.block.BlockState headState = c.world.getBlockState(headPos);
-                        if (!headState.isAir() && !(headState.getBlock() instanceof net.minecraft.block.FluidBlock)) {
-                            c.interactionManager.updateBlockBreakingProgress(headPos, net.minecraft.util.math.Direction.UP);
-                            c.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
-                        }
-                        // 4. Проверка блока ПОД ногами (если мы копаемся вниз)
-                        net.minecraft.util.math.BlockPos belowTarget = autoMineTarget.down();
-                        net.minecraft.block.BlockState belowState = c.world.getBlockState(belowTarget);
-                        // (опционально для будущего вертикального копания)
                     } else {
-                        // === ДОШЛИ - ЛОМАЕМ ===
+                        // Дошли — копаем ЦЕЛЬ
                         c.player.input.movementForward = 0.0f;
                         c.player.input.movementSideways = 0.0f;
                         c.player.setSprinting(false);
-
-                        // Если под целью пусто (мы на краю) - не падаем
                         c.interactionManager.updateBlockBreakingProgress(autoMineTarget, net.minecraft.util.math.Direction.UP);
                         c.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
                     }
