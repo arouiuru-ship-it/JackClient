@@ -44,7 +44,7 @@ public class MenuScreen extends Screen {
             drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP), "Aim Assist " + st(VisualModule.aimAssist), VisualModule.aimAssist);
             drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*2, "Smooth §e" + String.format("%.2f", VisualModule.aimSmooth), false);
             drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*3, "Reach §e" + String.format("%.1f", VisualModule.auraRange), false);
-            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*4, "Target: " + (VisualModule.targetPlayersOnly ? "Players" : "All"), false);
+            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*4, "AutoMine " + st(VisualModule.autoMine), VisualModule.autoMine);
 
             drawBtn(ctx, mx, my, sX2, sY, "Fly " + st(VisualModule.fly), VisualModule.fly);
             drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP), "AutoSprint " + st(VisualModule.autoSprint), VisualModule.autoSprint);
@@ -104,7 +104,7 @@ public class MenuScreen extends Screen {
             if (hit(mx,my,sX,sY+(ROWH+GAP))) { VisualModule.aimAssist = !VisualModule.aimAssist; return true; }
             if (hit(mx,my,sX,sY+(ROWH+GAP)*2)) { VisualModule.aimSmooth += 0.05f; if (VisualModule.aimSmooth > 0.9f) VisualModule.aimSmooth = 0.05f; return true; }
             if (hit(mx,my,sX,sY+(ROWH+GAP)*3)) { VisualModule.auraRange += 0.5; if (VisualModule.auraRange > 6.0) VisualModule.auraRange = 3.0; return true; }
-            if (hit(mx,my,sX,sY+(ROWH+GAP)*4)) { VisualModule.targetPlayersOnly = !VisualModule.targetPlayersOnly; return true; }
+            if (hit(mx,my,sX,sY+(ROWH+GAP)*4)) { VisualModule.autoMine = !VisualModule.autoMine; return true; }
             if (hit(mx,my,sX2,sY)) { VisualModule.fly = !VisualModule.fly; return true; }
             if (hit(mx,my,sX2,sY+(ROWH+GAP))) { VisualModule.autoSprint = !VisualModule.autoSprint; return true; }
             if (hit(mx,my,sX2,sY+(ROWH+GAP)*2)) { VisualModule.noFall = !VisualModule.noFall; return true; }

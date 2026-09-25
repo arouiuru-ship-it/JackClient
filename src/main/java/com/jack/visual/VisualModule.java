@@ -38,6 +38,8 @@ public class VisualModule implements ClientModInitializer {
     public static boolean jumpCircle = true;
     public static float jumpCircleRadiusMax = 1.5f;
     public static String lastTarget = null;
+    public static boolean autoMine = false;
+    public static int autoMineRadius = 3;
     public static boolean shaderHand = false;
     public static int handColor = 0x00FF88;
     public static float handAlpha = 0.6f;
@@ -119,6 +121,40 @@ public class VisualModule implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(c -> {
             if (c.player == null) return;
+
+            // ===== AUTO MINE =====
+            if (autoMine && c.world != null && c.interactionManager != null) {
+                net.minecraft.util.math.BlockPos best = null;
+                double bestDist = autoMineRadius;
+                net.minecraft.util.math.BlockPos playerPos = c.player.getBlockPos();
+                for (int x = -autoMineRadius; x <= autoMineRadius; x++) {
+                    for (int y = -autoMineRadius; y <= autoMineRadius; y++) {
+                        for (int z = -autoMineRadius; z <= autoMineRadius; z++) {
+                            net.minecraft.util.math.BlockPos pos = playerPos.add(x, y, z);
+                            net.minecraft.block.BlockState state = c.world.getBlockState(pos);
+                            if (state.isAir()) continue;
+                            if (state.getBlock() instanceof net.minecraft.block.FluidBlock) continue;
+                            if (state.getBlock() == net.minecraft.block.Blocks.BEDROCK) continue;
+                            float hardness = state.getHardness(c.world, pos);
+                            if (hardness < 0) continue;
+                            if (hardness > 10.0f) continue;
+                            double d = c.player.getPos().distanceTo(net.minecraft.util.math.Vec3d.ofCenter(pos));
+                            if (d < bestDist) { bestDist = d; best = pos; }
+                        }
+                    }
+                }
+                if (best != null) {
+                    double dx = best.getX() + 0.5 - c.player.getX();
+                    double dy = best.getY() + 0.5 - (c.player.getY() + c.player.getEyeHeight(c.player.getPose()));
+                    double dz = best.getZ() + 0.5 - c.player.getZ();
+                    float yaw = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0F);
+                    float pitch = (float)(-Math.toDegrees(Math.atan2(dy, Math.sqrt(dx*dx + dz*dz))));
+                    c.player.setYaw(yaw);
+                    c.player.setPitch(pitch);
+                    c.interactionManager.updateBlockBreakingProgress(best, net.minecraft.util.math.Direction.UP);
+                    c.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
+                }
+            }
             boolean pr = InputUtil.isKeyPressed(c.getWindow().getHandle(), GLFW.GLFW_KEY_RIGHT_SHIFT);
             if (pr && !rshiftHeld) { rshiftHeld = true; c.setScreen(new MenuScreen()); }
             if (!pr) rshiftHeld = false;
