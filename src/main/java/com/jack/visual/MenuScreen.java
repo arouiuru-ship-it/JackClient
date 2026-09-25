@@ -54,7 +54,7 @@ public class MenuScreen extends Screen {
         } else {
             drawBtn(ctx, mx, my, sX, sY, "PlayerESP " + st(VisualModule.esp), VisualModule.esp);
             drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP), "JumpCircle " + st(VisualModule.jumpCircle), VisualModule.jumpCircle);
-            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*2, "TargetHUD " + st(VisualModule.targetHud), VisualModule.targetHud);
+            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*2, "SwingAnim " + st(VisualModule.swingAnimation), VisualModule.swingAnimation);
             drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*3, "HUD " + st(VisualModule.hud), VisualModule.hud);
             drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*4, "Fullbright " + st(VisualModule.fullbright), VisualModule.fullbright);
 
@@ -110,7 +110,7 @@ public class MenuScreen extends Screen {
         } else {
             if (hit(mx,my,sX,sY)) { VisualModule.esp = !VisualModule.esp; return true; }
             if (hit(mx,my,sX,sY+(ROWH+GAP))) { VisualModule.jumpCircle = !VisualModule.jumpCircle; return true; }
-            if (hit(mx,my,sX,sY+(ROWH+GAP)*2)) { VisualModule.targetHud = !VisualModule.targetHud; return true; }
+            if (hit(mx,my,sX,sY+(ROWH+GAP)*2)) { if (btn == 0) VisualModule.swingAnimation = !VisualModule.swingAnimation; return true; }
             if (hit(mx,my,sX,sY+(ROWH+GAP)*3)) { VisualModule.hud = !VisualModule.hud; return true; }
             if (hit(mx,my,sX,sY+(ROWH+GAP)*4)) { VisualModule.fullbright = !VisualModule.fullbright; return true; }
             if (hit(mx,my,sX2,sY)) { VisualModule.optimized = !VisualModule.optimized; return true; }
