@@ -127,14 +127,16 @@ public class VisualModule implements ClientModInitializer {
 
             // ===== AUTO MINE =====
             if (autoMine && c.world != null && c.interactionManager != null) {
-                // Если цель пропала (сломана) - ищем новую
-                if (autoMineTarget != null) {
-                    net.minecraft.block.BlockState st = c.world.getBlockState(autoMineTarget);
-                    if (st.isAir() || !blockMatches(st)) autoMineTarget = null;
-                }
-                // Поиск нового блока
+                // Если цели нет - ищем новую
                 if (autoMineTarget == null) {
                     autoMineTarget = findAutoMineBlock(c);
+                }
+                // Если цель сломана - сбрасываем
+                if (autoMineTarget != null) {
+                    net.minecraft.block.BlockState st = c.world.getBlockState(autoMineTarget);
+                    if (st.isAir() || !blockMatches(st)) {
+                        autoMineTarget = null;
+                    }
                 }
                 if (autoMineTarget != null) {
                     double dx = autoMineTarget.getX() + 0.5 - c.player.getX();
@@ -142,25 +144,27 @@ public class VisualModule implements ClientModInitializer {
                     double dz = autoMineTarget.getZ() + 0.5 - c.player.getZ();
                     double dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
 
-                    // Смотрим на блок
                     float yaw = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0F);
                     float pitch = (float)(-Math.toDegrees(Math.atan2(dy, Math.sqrt(dx*dx + dz*dz))));
                     c.player.setYaw(yaw);
                     c.player.setPitch(pitch);
 
-                    if (dist > 3.8) {
-                        // Идём к блоку - нажимаем W
+                    if (dist > 3.5) {
                         c.options.forwardKey.setPressed(true);
+                        c.options.sprintKey.setPressed(true);
                     } else {
-                        // Дошли - ломаем
                         c.options.forwardKey.setPressed(false);
+                        c.options.sprintKey.setPressed(false);
                         c.interactionManager.updateBlockBreakingProgress(autoMineTarget, net.minecraft.util.math.Direction.UP);
                         c.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
                     }
                 } else {
                     c.options.forwardKey.setPressed(false);
+                    c.options.sprintKey.setPressed(false);
                 }
             }
+
+            
 
             boolean pr = InputUtil.isKeyPressed(c.getWindow().getHandle(), GLFW.GLFW_KEY_RIGHT_SHIFT);
             if (pr && !rshiftHeld) { rshiftHeld = true; c.setScreen(new MenuScreen()); }
@@ -301,7 +305,10 @@ public class VisualModule implements ClientModInitializer {
         return (float)(-Math.toDegrees(Math.atan2(dy, dist)));
     }
 
+
+
     private static net.minecraft.util.math.BlockPos findAutoMineBlock(MinecraftClient c) {
+        if (c.player == null || c.world == null) return null;
         net.minecraft.util.math.BlockPos playerPos = c.player.getBlockPos();
         net.minecraft.util.math.BlockPos best = null;
         double bestDist = autoMineRadius * 2.0;
@@ -313,8 +320,8 @@ public class VisualModule implements ClientModInitializer {
                     net.minecraft.block.BlockState state = c.world.getBlockState(pos);
                     if (state.isAir()) continue;
                     if (!blockMatches(state)) continue;
-                    float hardness = state.getHardness(c.world, pos);
-                    if (hardness < 0 || hardness > 10.0f) continue;
+                    float h = state.getHardness(c.world, pos);
+                    if (h < 0 || h > 10.0f) continue;
                     double d = c.player.getPos().distanceTo(net.minecraft.util.math.Vec3d.ofCenter(pos));
                     if (d < bestDist) { bestDist = d; best = pos; }
                 }
@@ -325,35 +332,16 @@ public class VisualModule implements ClientModInitializer {
 
     private static boolean blockMatches(net.minecraft.block.BlockState state) {
         net.minecraft.block.Block b = state.getBlock();
-        switch (autoMineBlock) {
-            case "Any": return true;
-            case "Diamond":
-                return b == net.minecraft.block.Blocks.DIAMOND_ORE
-                    || b == net.minecraft.block.Blocks.DEEPSLATE_DIAMOND_ORE;
-            case "Iron":
-                return b == net.minecraft.block.Blocks.IRON_ORE
-                    || b == net.minecraft.block.Blocks.DEEPSLATE_IRON_ORE;
-            case "Gold":
-                return b == net.minecraft.block.Blocks.GOLD_ORE
-                    || b == net.minecraft.block.Blocks.DEEPSLATE_GOLD_ORE
-                    || b == net.minecraft.block.Blocks.NETHER_GOLD_ORE;
-            case "Coal":
-                return b == net.minecraft.block.Blocks.COAL_ORE
-                    || b == net.minecraft.block.Blocks.DEEPSLATE_COAL_ORE;
-            case "Emerald":
-                return b == net.minecraft.block.Blocks.EMERALD_ORE
-                    || b == net.minecraft.block.Blocks.DEEPSLATE_EMERALD_ORE;
-            case "Ancient Debris":
-                return b == net.minecraft.block.Blocks.ANCIENT_DEBRIS;
-            case "Netherite":
-                return b == net.minecraft.block.Blocks.ANCIENT_DEBRIS;
-            case "Logs":
-                return state.isIn(net.minecraft.registry.tag.BlockTags.LOGS);
-            case "Stone":
-                return b == net.minecraft.block.Blocks.STONE
-                    || b == net.minecraft.block.Blocks.COBBLESTONE
-                    || b == net.minecraft.block.Blocks.DEEPSLATE;
-            default: return false;
-        }
+        String m = autoMineBlock;
+        if (m.equals("Any")) return true;
+        if (m.equals("Diamond")) return b == net.minecraft.block.Blocks.DIAMOND_ORE || b == net.minecraft.block.Blocks.DEEPSLATE_DIAMOND_ORE;
+        if (m.equals("Iron")) return b == net.minecraft.block.Blocks.IRON_ORE || b == net.minecraft.block.Blocks.DEEPSLATE_IRON_ORE;
+        if (m.equals("Gold")) return b == net.minecraft.block.Blocks.GOLD_ORE || b == net.minecraft.block.Blocks.DEEPSLATE_GOLD_ORE;
+        if (m.equals("Coal")) return b == net.minecraft.block.Blocks.COAL_ORE || b == net.minecraft.block.Blocks.DEEPSLATE_COAL_ORE;
+        if (m.equals("Emerald")) return b == net.minecraft.block.Blocks.EMERALD_ORE || b == net.minecraft.block.Blocks.DEEPSLATE_EMERALD_ORE;
+        if (m.equals("Ancient Debris")) return b == net.minecraft.block.Blocks.ANCIENT_DEBRIS;
+        if (m.equals("Logs")) return state.isIn(net.minecraft.registry.tag.BlockTags.LOGS);
+        if (m.equals("Stone")) return b == net.minecraft.block.Blocks.STONE || b == net.minecraft.block.Blocks.COBBLESTONE || b == net.minecraft.block.Blocks.DEEPSLATE;
+        return false;
     }
 }
