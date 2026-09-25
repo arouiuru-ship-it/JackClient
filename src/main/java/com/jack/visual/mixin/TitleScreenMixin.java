@@ -66,8 +66,8 @@ public class TitleScreenMixin {
         ctx.fill(w - pad - len, h - pad - th, w - pad, h - pad, green);
         ctx.fill(w - pad - th, h - pad - len, w - pad, h - pad, green);
 
-        ctx.drawCenteredTextWithShadow(tr, Text.literal("§a§lJ A C K C L I E N T"), w / 2, 14, 0xFFFFFF);
-        ctx.drawCenteredTextWithShadow(tr, Text.literal("§7v3.0  §8•  §7Fabric 1.21.4"), w / 2, 28, 0xFFFFFF);
+        ctx.drawCenteredTextWithShadow(tr, Text.literal("§a§lJ A C K C L I E N T"), w / 2, h / 2 - 90, 0xFFFFFF);
+        ctx.drawCenteredTextWithShadow(tr, Text.literal("§7v3.0  §8•  §7Fabric 1.21.4"), w / 2, h / 2 - 76, 0xFFFFFF);
         String hello = "§a● §fHello, §aAdmin";
         int hw = tr.getWidth(hello);
         ctx.drawTextWithShadow(tr, Text.literal(hello), w - hw - 16, 14, 0xFFFFFF);
