@@ -39,9 +39,26 @@ public class VisualModule implements ClientModInitializer {
     public static float jumpCircleRadiusMax = 1.5f;
     public static String lastTarget = null;
     public static boolean autoMine = false;
-    public static int autoMineRadius = 4;
+    public static int autoMineRadius = 8;
     public static String autoMineBlock = "Diamond";
-    public static String[] AUTO_MINE_BLOCKS = {"Any", "Diamond", "Iron", "Gold", "Coal", "Emerald", "Ancient Debris", "Logs", "Stone", "Netherite"};
+    public static String[] AUTO_MINE_BLOCKS = {
+        "Any",
+        "Diamond", "Deepslate Diamond",
+        "Iron", "Deepslate Iron",
+        "Gold", "Deepslate Gold", "Nether Gold",
+        "Coal", "Deepslate Coal",
+        "Emerald", "Deepslate Emerald",
+        "Redstone", "Deepslate Redstone",
+        "Lapis", "Deepslate Lapis",
+        "Copper", "Deepslate Copper",
+        "Quartz", "Ancient Debris",
+        "Logs", "Planks", "Leaves",
+        "Stone", "Cobblestone", "Deepslate",
+        "Dirt", "Grass", "Sand", "Gravel", "Clay",
+        "Obsidian", "Ice", "Snow",
+        "Glass", "Bookshelf", "Crafting Table",
+        "Furnace", "Chest", "Torch"
+    };
     public static boolean shaderHand = false;
     public static int handColor = 0x00FF88;
     public static float handAlpha = 0.6f;
@@ -125,42 +142,95 @@ public class VisualModule implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(c -> {
             if (c.player == null) return;
 
-            // ===== AUTO MINE =====
+            // ===== AUTO MINE (Smart AI) =====
             if (autoMine && c.world != null && c.interactionManager != null) {
-                // Если цели нет - ищем новую
-                if (autoMineTarget == null) {
-                    autoMineTarget = findAutoMineBlock(c);
-                }
-                // Если цель сломана - сбрасываем
+                if (autoMineTarget == null) autoMineTarget = findAutoMineBlock(c);
+
+                // Проверка цели - сломана?
                 if (autoMineTarget != null) {
                     net.minecraft.block.BlockState st = c.world.getBlockState(autoMineTarget);
-                    if (st.isAir() || !blockMatches(st)) {
-                        autoMineTarget = null;
-                    }
+                    if (st.isAir() || !blockMatches(st)) autoMineTarget = null;
                 }
-                if (autoMineTarget != null) {
-                    double dx = autoMineTarget.getX() + 0.5 - c.player.getX();
-                    double dy = autoMineTarget.getY() + 0.5 - (c.player.getY() + c.player.getEyeHeight(c.player.getPose()));
-                    double dz = autoMineTarget.getZ() + 0.5 - c.player.getZ();
-                    double dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
 
+                if (autoMineTarget != null) {
+                    net.minecraft.util.math.Vec3d targetCenter = net.minecraft.util.math.Vec3d.ofCenter(autoMineTarget);
+                    net.minecraft.util.math.Vec3d playerPos = c.player.getPos();
+                    double dist = playerPos.distanceTo(targetCenter);
+
+                    // Смотрим на цель
+                    double dx = targetCenter.x - c.player.getX();
+                    double dy = targetCenter.y - (c.player.getY() + c.player.getEyeHeight(c.player.getPose()));
+                    double dz = targetCenter.z - c.player.getZ();
                     float yaw = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0F);
                     float pitch = (float)(-Math.toDegrees(Math.atan2(dy, Math.sqrt(dx*dx + dz*dz))));
                     c.player.setYaw(yaw);
                     c.player.setPitch(pitch);
 
                     if (dist > 3.5) {
-                        c.options.forwardKey.setPressed(true);
-                        c.options.sprintKey.setPressed(true);
+                        // === AI ИДЁТ К БЛОКУ ===
+                        // Считаем угол к цели относительно текущего yaw
+                        float targetYaw = (float)(Math.atan2(dz, dx) * 180.0 / Math.PI) - 90f;
+                        float deltaYaw = MathHelper.wrapDegrees(targetYaw - c.player.getYaw());
+
+                        // Если цель прямо - идём вперёд
+                        if (Math.abs(deltaYaw) < 45f) {
+                            c.player.input.movementForward = 1.0f;
+                            c.player.input.movementSideways = 0.0f;
+                        } else if (deltaYaw > 0) {
+                            // Цель слева - стрейф влево
+                            c.player.input.movementForward = 0.5f;
+                            c.player.input.movementSideways = 1.0f;
+                        } else {
+                            // Цель справа - стрейф вправо
+                            c.player.input.movementForward = 0.5f;
+                            c.player.input.movementSideways = -1.0f;
+                        }
+                        c.player.setSprinting(true);
+
+                        // === ПРОВЕРКА ПУТИ ВПЕРЁД ===
+                        net.minecraft.util.math.Vec3d lookVec = c.player.getRotationVec(1.0f);
+                        net.minecraft.util.math.BlockPos front = c.player.getBlockPos().offset(
+                            net.minecraft.util.math.Direction.fromHorizontal(lookVec.getHorizontal()));
+
+                        net.minecraft.block.BlockState frontState = c.world.getBlockState(front);
+                        net.minecraft.block.BlockState frontUp = c.world.getBlockState(front.up());
+                        net.minecraft.block.BlockState frontUp2 = c.world.getBlockState(front.up(2));
+
+                        // 1. Если перед нами блок высотой 1 → прыжок
+                        if (!frontState.isAir() && frontUp.isAir() && c.player.isOnGround()) {
+                            c.player.jump();
+                        }
+                        // 2. Если перед нами блок высотой 2+ → копаем его
+                        else if (!frontState.isAir() && !frontUp.isAir() && c.player.isOnGround()) {
+                            // Ломаем блок перед нами
+                            c.interactionManager.updateBlockBreakingProgress(front, net.minecraft.util.math.Direction.UP);
+                            c.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
+                        }
+                        // 3. Проверка блока НАД ногами (на голове)
+                        net.minecraft.util.math.BlockPos headPos = c.player.getBlockPos().up(2);
+                        net.minecraft.block.BlockState headState = c.world.getBlockState(headPos);
+                        if (!headState.isAir() && !(headState.getBlock() instanceof net.minecraft.block.FluidBlock)) {
+                            c.interactionManager.updateBlockBreakingProgress(headPos, net.minecraft.util.math.Direction.UP);
+                            c.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
+                        }
+                        // 4. Проверка блока ПОД ногами (если мы копаемся вниз)
+                        net.minecraft.util.math.BlockPos belowTarget = autoMineTarget.down();
+                        net.minecraft.block.BlockState belowState = c.world.getBlockState(belowTarget);
+                        // (опционально для будущего вертикального копания)
                     } else {
-                        c.options.forwardKey.setPressed(false);
-                        c.options.sprintKey.setPressed(false);
+                        // === ДОШЛИ - ЛОМАЕМ ===
+                        c.player.input.movementForward = 0.0f;
+                        c.player.input.movementSideways = 0.0f;
+                        c.player.setSprinting(false);
+
+                        // Если под целью пусто (мы на краю) - не падаем
                         c.interactionManager.updateBlockBreakingProgress(autoMineTarget, net.minecraft.util.math.Direction.UP);
                         c.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
                     }
                 } else {
-                    c.options.forwardKey.setPressed(false);
-                    c.options.sprintKey.setPressed(false);
+                    c.player.input.movementForward = 0.0f;
+                    c.player.input.movementSideways = 0.0f;
+                    c.player.setSprinting(false);
                 }
             }
 
@@ -330,18 +400,50 @@ public class VisualModule implements ClientModInitializer {
         return best;
     }
 
+
     private static boolean blockMatches(net.minecraft.block.BlockState state) {
         net.minecraft.block.Block b = state.getBlock();
         String m = autoMineBlock;
-        if (m.equals("Any")) return true;
-        if (m.equals("Diamond")) return b == net.minecraft.block.Blocks.DIAMOND_ORE || b == net.minecraft.block.Blocks.DEEPSLATE_DIAMOND_ORE;
-        if (m.equals("Iron")) return b == net.minecraft.block.Blocks.IRON_ORE || b == net.minecraft.block.Blocks.DEEPSLATE_IRON_ORE;
-        if (m.equals("Gold")) return b == net.minecraft.block.Blocks.GOLD_ORE || b == net.minecraft.block.Blocks.DEEPSLATE_GOLD_ORE;
-        if (m.equals("Coal")) return b == net.minecraft.block.Blocks.COAL_ORE || b == net.minecraft.block.Blocks.DEEPSLATE_COAL_ORE;
-        if (m.equals("Emerald")) return b == net.minecraft.block.Blocks.EMERALD_ORE || b == net.minecraft.block.Blocks.DEEPSLATE_EMERALD_ORE;
+        if (m.equals("Any")) return !state.isAir();
+        if (m.equals("Diamond")) return b == net.minecraft.block.Blocks.DIAMOND_ORE;
+        if (m.equals("Deepslate Diamond")) return b == net.minecraft.block.Blocks.DEEPSLATE_DIAMOND_ORE;
+        if (m.equals("Iron")) return b == net.minecraft.block.Blocks.IRON_ORE;
+        if (m.equals("Deepslate Iron")) return b == net.minecraft.block.Blocks.DEEPSLATE_IRON_ORE;
+        if (m.equals("Gold")) return b == net.minecraft.block.Blocks.GOLD_ORE;
+        if (m.equals("Deepslate Gold")) return b == net.minecraft.block.Blocks.DEEPSLATE_GOLD_ORE;
+        if (m.equals("Nether Gold")) return b == net.minecraft.block.Blocks.NETHER_GOLD_ORE;
+        if (m.equals("Coal")) return b == net.minecraft.block.Blocks.COAL_ORE;
+        if (m.equals("Deepslate Coal")) return b == net.minecraft.block.Blocks.DEEPSLATE_COAL_ORE;
+        if (m.equals("Emerald")) return b == net.minecraft.block.Blocks.EMERALD_ORE;
+        if (m.equals("Deepslate Emerald")) return b == net.minecraft.block.Blocks.DEEPSLATE_EMERALD_ORE;
+        if (m.equals("Redstone")) return b == net.minecraft.block.Blocks.REDSTONE_ORE;
+        if (m.equals("Deepslate Redstone")) return b == net.minecraft.block.Blocks.DEEPSLATE_REDSTONE_ORE;
+        if (m.equals("Lapis")) return b == net.minecraft.block.Blocks.LAPIS_ORE;
+        if (m.equals("Deepslate Lapis")) return b == net.minecraft.block.Blocks.DEEPSLATE_LAPIS_ORE;
+        if (m.equals("Copper")) return b == net.minecraft.block.Blocks.COPPER_ORE;
+        if (m.equals("Deepslate Copper")) return b == net.minecraft.block.Blocks.DEEPSLATE_COPPER_ORE;
+        if (m.equals("Quartz")) return b == net.minecraft.block.Blocks.NETHER_QUARTZ_ORE;
         if (m.equals("Ancient Debris")) return b == net.minecraft.block.Blocks.ANCIENT_DEBRIS;
         if (m.equals("Logs")) return state.isIn(net.minecraft.registry.tag.BlockTags.LOGS);
-        if (m.equals("Stone")) return b == net.minecraft.block.Blocks.STONE || b == net.minecraft.block.Blocks.COBBLESTONE || b == net.minecraft.block.Blocks.DEEPSLATE;
+        if (m.equals("Planks")) return state.isIn(net.minecraft.registry.tag.BlockTags.PLANKS);
+        if (m.equals("Leaves")) return state.isIn(net.minecraft.registry.tag.BlockTags.LEAVES);
+        if (m.equals("Stone")) return b == net.minecraft.block.Blocks.STONE;
+        if (m.equals("Cobblestone")) return b == net.minecraft.block.Blocks.COBBLESTONE;
+        if (m.equals("Deepslate")) return b == net.minecraft.block.Blocks.DEEPSLATE;
+        if (m.equals("Dirt")) return b == net.minecraft.block.Blocks.DIRT;
+        if (m.equals("Grass")) return b == net.minecraft.block.Blocks.GRASS_BLOCK;
+        if (m.equals("Sand")) return b == net.minecraft.block.Blocks.SAND || b == net.minecraft.block.Blocks.RED_SAND;
+        if (m.equals("Gravel")) return b == net.minecraft.block.Blocks.GRAVEL;
+        if (m.equals("Clay")) return b == net.minecraft.block.Blocks.CLAY;
+        if (m.equals("Obsidian")) return b == net.minecraft.block.Blocks.OBSIDIAN;
+        if (m.equals("Ice")) return b == net.minecraft.block.Blocks.ICE || b == net.minecraft.block.Blocks.PACKED_ICE || b == net.minecraft.block.Blocks.BLUE_ICE;
+        if (m.equals("Snow")) return b == net.minecraft.block.Blocks.SNOW || b == net.minecraft.block.Blocks.SNOW_BLOCK;
+        if (m.equals("Glass")) return b == net.minecraft.block.Blocks.GLASS;
+        if (m.equals("Bookshelf")) return b == net.minecraft.block.Blocks.BOOKSHELF;
+        if (m.equals("Crafting Table")) return b == net.minecraft.block.Blocks.CRAFTING_TABLE;
+        if (m.equals("Furnace")) return b == net.minecraft.block.Blocks.FURNACE;
+        if (m.equals("Chest")) return b == net.minecraft.block.Blocks.CHEST;
+        if (m.equals("Torch")) return b == net.minecraft.block.Blocks.TORCH;
         return false;
     }
 }
