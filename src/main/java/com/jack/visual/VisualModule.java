@@ -42,8 +42,6 @@ public class VisualModule implements ClientModInitializer {
     public static int autoMineRadius = 4;
     public static String autoMineBlock = "Diamond";
     public static String[] AUTO_MINE_BLOCKS = {"Any", "Diamond", "Iron", "Gold", "Coal", "Emerald", "Ancient Debris", "Logs", "Stone", "Netherite"};
-    public static boolean autoMine = false;
-    public static int autoMineRadius = 3;
     public static boolean shaderHand = false;
     public static int handColor = 0x00FF88;
     public static float handAlpha = 0.6f;
