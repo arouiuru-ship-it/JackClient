@@ -6,7 +6,7 @@
     "TitleScreenMixin",
     "OptimizedMixin",
     "LogoDrawerMixin",
-    "SwingAnimationMixin"
+    "ShaderHandMixin"
   ],
   "injectors": {
     "defaultRequire": 1

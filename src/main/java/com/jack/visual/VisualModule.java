@@ -38,6 +38,9 @@ public class VisualModule implements ClientModInitializer {
     public static boolean jumpCircle = true;
     public static float jumpCircleRadiusMax = 1.5f;
     public static String lastTarget = null;
+    public static boolean shaderHand = false;
+    public static int handColor = 0x00FF88;
+    public static float handAlpha = 0.6f;
     public static boolean swingAnimation = false;
     public static String swingStyle = "Smooth";
     public static float swingSpeed = 1.0f;
