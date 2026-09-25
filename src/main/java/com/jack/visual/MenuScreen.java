@@ -29,7 +29,7 @@ public class MenuScreen extends Screen {
         ctx.fill(px, py, px + 1, py + PH, 0xFF00FF88);
         ctx.fill(px + PW - 1, py, px + PW, py + PH, 0xFF00FF88);
 
-        ctx.drawCenteredTextWithShadow(textRenderer, "§a§lJACK §f§lCLIENT §7v3.0", px + PW / 2, py + 6, 0xFFFFFF);
+        ctx.drawCenteredTextWithShadow(textRenderer, "§a§lJACK §f§lCLIENT §7v3.1", px + PW / 2, py + 6, 0xFFFFFF);
         ctx.fill(px + 8, py + 18, px + PW - 8, py + 19, 0xFF303030);
 
         int tabY = py + 24;
@@ -55,13 +55,14 @@ public class MenuScreen extends Screen {
             drawBtn(ctx, mx, my, sX, sY, "PlayerESP " + st(VisualModule.esp), VisualModule.esp);
             drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP), "JumpCircle " + st(VisualModule.jumpCircle), VisualModule.jumpCircle);
             drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*2, "SwingAnim " + st(VisualModule.swingAnimation), VisualModule.swingAnimation);
-            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*3, "HUD " + st(VisualModule.hud), VisualModule.hud);
-            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*4, "Fullbright " + st(VisualModule.fullbright), VisualModule.fullbright);
+            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*3, "Style: §e" + VisualModule.swingStyle, false);
+            drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*4, "SwingSpd §e" + String.format("%.2f", VisualModule.swingSpeed), false);
 
-            drawBtn(ctx, mx, my, sX2, sY, "Optimized " + st(VisualModule.optimized), VisualModule.optimized);
-            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP), "§7FPS: §f" + mc.getCurrentFps(), false);
-            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*2, "§7Target: §f" + (VisualModule.lastTarget != null ? VisualModule.lastTarget : "none"), false);
-            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*3, "§cClose", false);
+            drawBtn(ctx, mx, my, sX2, sY, "Fullbright " + st(VisualModule.fullbright), VisualModule.fullbright);
+            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP), "Optimized " + st(VisualModule.optimized), VisualModule.optimized);
+            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*2, "§7FPS: §f" + mc.getCurrentFps(), false);
+            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*3, "§7Target: §f" + (VisualModule.lastTarget != null ? VisualModule.lastTarget : "none"), false);
+            drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*4, "§cClose", false);
         }
     }
 
@@ -84,6 +85,8 @@ public class MenuScreen extends Screen {
         ctx.fill(x + COLW - 1, y, x + COLW, y + ROWH, hov ? 0xFF00FF88 : 0xFF3A3A3A);
         ctx.drawTextWithShadow(textRenderer, label, x + 7, y + (ROWH - 8) / 2, 0xFFFFFF);
     }
+
+    private String[] SWING_STYLES = {"Smooth", "Exhibition", "Spin", "Slide", "No Swing", "None"};
 
     @Override
     public boolean mouseClicked(double mx, double my, int btn) {
@@ -110,11 +113,17 @@ public class MenuScreen extends Screen {
         } else {
             if (hit(mx,my,sX,sY)) { VisualModule.esp = !VisualModule.esp; return true; }
             if (hit(mx,my,sX,sY+(ROWH+GAP))) { VisualModule.jumpCircle = !VisualModule.jumpCircle; return true; }
-            if (hit(mx,my,sX,sY+(ROWH+GAP)*2)) { if (btn == 0) VisualModule.swingAnimation = !VisualModule.swingAnimation; return true; }
-            if (hit(mx,my,sX,sY+(ROWH+GAP)*3)) { VisualModule.hud = !VisualModule.hud; return true; }
-            if (hit(mx,my,sX,sY+(ROWH+GAP)*4)) { VisualModule.fullbright = !VisualModule.fullbright; return true; }
-            if (hit(mx,my,sX2,sY)) { VisualModule.optimized = !VisualModule.optimized; return true; }
-            if (hit(mx,my,sX2,sY+(ROWH+GAP)*3)) { close(); return true; }
+            if (hit(mx,my,sX,sY+(ROWH+GAP)*2)) { VisualModule.swingAnimation = !VisualModule.swingAnimation; return true; }
+            if (hit(mx,my,sX,sY+(ROWH+GAP)*3)) {
+                int idx = 0;
+                for (int i = 0; i < SWING_STYLES.length; i++) if (SWING_STYLES[i].equals(VisualModule.swingStyle)) { idx = i; break; }
+                VisualModule.swingStyle = SWING_STYLES[(idx + 1) % SWING_STYLES.length];
+                return true;
+            }
+            if (hit(mx,my,sX,sY+(ROWH+GAP)*4)) { VisualModule.swingSpeed += 0.1f; if (VisualModule.swingSpeed > 2.0f) VisualModule.swingSpeed = 0.5f; return true; }
+            if (hit(mx,my,sX2,sY)) { VisualModule.fullbright = !VisualModule.fullbright; return true; }
+            if (hit(mx,my,sX2,sY+(ROWH+GAP))) { VisualModule.optimized = !VisualModule.optimized; return true; }
+            if (hit(mx,my,sX2,sY+(ROWH+GAP)*4)) { close(); return true; }
         }
         return false;
     }
