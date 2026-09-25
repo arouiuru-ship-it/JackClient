@@ -5,7 +5,8 @@
   "client": [
     "TitleScreenMixin",
     "OptimizedMixin",
-    "LogoDrawerMixin"
+    "LogoDrawerMixin",
+    "SwingAnimationMixin"
   ],
   "injectors": {
     "defaultRequire": 1
