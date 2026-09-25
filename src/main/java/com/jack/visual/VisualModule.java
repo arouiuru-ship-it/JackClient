@@ -38,6 +38,12 @@ public class VisualModule implements ClientModInitializer {
     public static boolean jumpCircle = true;
     public static float jumpCircleRadiusMax = 1.5f;
     public static String lastTarget = null;
+    public static boolean swingAnimation = false;
+    public static String swingStyle = "Smooth";
+    public static float swingSpeed = 1.0f;
+    public static float handScale = 1.0f;
+    public static float handOffsetX = 0f, handOffsetY = 0f, handOffsetZ = 0f;
+    public static float handRotationX = 0f, handRotationY = 0f, handRotationZ = 0f;
 
     private static final MinecraftClient mc = MinecraftClient.getInstance();
     private static boolean rshiftHeld = false;
