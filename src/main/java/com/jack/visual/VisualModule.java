@@ -72,6 +72,8 @@ public class VisualModule implements ClientModInitializer {
     private static final MinecraftClient mc = MinecraftClient.getInstance();
     private static boolean rshiftHeld = false;
     private static net.minecraft.util.math.BlockPos autoMineTarget = null;
+    private static int stuckTicks = 0;
+    private static double lastPlayerX = 0, lastPlayerZ = 0;
     private static float origGamma = 0f;
     private static boolean jumpCircleActive = false;
     private static double jumpCircleX = 0, jumpCircleY = 0, jumpCircleZ = 0;
@@ -147,13 +149,29 @@ public class VisualModule implements ClientModInitializer {
                 net.minecraft.util.math.Vec3d targetCenter = null;
                 boolean isLoot = false;
 
-                // 1. Приоритет - подобрать дроп
+                // 1. Дроп только если он РЕАЛЬНО достижим (не за стеной)
                 net.minecraft.entity.ItemEntity loot = null;
-                double lootDist = 6.0;
+                double lootDist = 4.0;
                 for (net.minecraft.entity.Entity e : c.world.getEntities()) {
                     if (!(e instanceof net.minecraft.entity.ItemEntity)) continue;
                     double d = c.player.distanceTo(e);
-                    if (d < lootDist) { lootDist = d; loot = (net.minecraft.entity.ItemEntity) e; }
+                    if (d >= lootDist) continue;
+                    // Проверяем - дроп не за блоком?
+                    double ex = e.getX() - c.player.getX();
+                    double ey = e.getY() - (c.player.getY() + c.player.getEyeHeight(c.player.getPose()));
+                    double ez = e.getZ() - c.player.getZ();
+                    double lDist = Math.sqrt(ex*ex + ey*ey + ez*ez);
+                    if (lDist < 0.1) continue;
+                    net.minecraft.util.math.Vec3d start = c.player.getEyePos();
+                    net.minecraft.util.math.Vec3d dir = new net.minecraft.util.math.Vec3d(ex/lDist, ey/lDist, ez/lDist);
+                    net.minecraft.util.hit.HitResult hit = c.world.raycast(new net.minecraft.world.RaycastContext(
+                        start, start.add(dir.multiply(lDist)), net.minecraft.world.RaycastContext.ShapeType.OUTLINE,
+                        net.minecraft.world.RaycastContext.FluidHandling.NONE, c.player));
+                    // Если на пути к дропу нет препятствия
+                    if (hit == null || hit.getType() == net.minecraft.util.hit.HitResult.Type.MISS) {
+                        lootDist = d;
+                        loot = (net.minecraft.entity.ItemEntity) e;
+                    }
                 }
                 if (loot != null) {
                     targetCenter = loot.getPos();
@@ -261,6 +279,29 @@ public class VisualModule implements ClientModInitializer {
                     }
                 } else {
                     c.player.setVelocity(0, c.player.getVelocity().y, 0);
+                }
+
+                // Проверка застоя
+                double movedX = Math.abs(c.player.getX() - lastPlayerX);
+                double movedZ = Math.abs(c.player.getZ() - lastPlayerZ);
+                if (movedX < 0.01 && movedZ < 0.01) {
+                    stuckTicks++;
+                } else {
+                    stuckTicks = 0;
+                }
+                lastPlayerX = c.player.getX();
+                lastPlayerZ = c.player.getZ();
+
+                // Если стоим 40 тиков (2 сек) - копаем блок перед нами
+                if (stuckTicks > 40) {
+                    net.minecraft.util.math.Vec3d look = c.player.getRotationVec(1.0f);
+                    net.minecraft.util.math.BlockPos ahead = c.player.getBlockPos().offset(
+                        net.minecraft.util.math.Direction.getFacing(look.x, look.y, look.z));
+                    if (!c.world.getBlockState(ahead).isAir()) {
+                        c.interactionManager.updateBlockBreakingProgress(ahead, net.minecraft.util.math.Direction.UP);
+                        c.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
+                    }
+                    if (stuckTicks > 60) stuckTicks = 0; // сброс
                 }
             }
 
