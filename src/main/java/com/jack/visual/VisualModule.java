@@ -190,7 +190,7 @@ public class VisualModule implements ClientModInitializer {
                         // === ПРОВЕРКА ПУТИ ВПЕРЁД ===
                         net.minecraft.util.math.Vec3d lookVec = c.player.getRotationVec(1.0f);
                         net.minecraft.util.math.BlockPos front = c.player.getBlockPos().offset(
-                            net.minecraft.util.math.Direction.fromHorizontal(lookVec.getHorizontal()));
+                            net.minecraft.util.math.Direction.getFacing(lookVec.x, 0, lookVec.z));
 
                         net.minecraft.block.BlockState frontState = c.world.getBlockState(front);
                         net.minecraft.block.BlockState frontUp = c.world.getBlockState(front.up());
