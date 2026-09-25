@@ -142,9 +142,9 @@ public class VisualModule implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(c -> {
             if (c.player == null) return;
 
-            // ===== AUTO MINE (прокладывает путь к цели) =====
+            // ===== AUTO MINE =====
             if (autoMine && c.world != null && c.interactionManager != null) {
-                // ПРИОРИТЕТ 1: собираем дропы
+                // ПРИОРИТЕТ: собираем дропы
                 net.minecraft.entity.ItemEntity loot = null;
                 double lootDist = 6.0;
                 for (net.minecraft.entity.Entity e : c.world.getEntities()) {
@@ -153,101 +153,93 @@ public class VisualModule implements ClientModInitializer {
                     if (d < lootDist) { lootDist = d; loot = (net.minecraft.entity.ItemEntity) e; }
                 }
                 if (loot != null) {
-                    double dx = loot.getX() - c.player.getX();
-                    double dz = loot.getZ() - c.player.getZ();
-                    c.player.setYaw((float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0F));
-                    c.player.setPitch(0);
-                    c.player.input.movementForward = 1.0f;
-                    c.player.input.movementSideways = 0.0f;
-                    c.player.setSprinting(true);
+                    double ldx = loot.getX() - c.player.getX();
+                    double ldz = loot.getZ() - c.player.getZ();
+                    double ldist = Math.sqrt(ldx*ldx + ldz*ldz);
+                    if (ldist > 0.5) {
+                        c.player.setYaw((float)(Math.toDegrees(Math.atan2(ldz, ldx)) - 90.0F));
+                        c.player.setPitch(0);
+                        // Двигаем через velocity
+                        double speed = 0.22;
+                        c.player.setVelocity(ldx/ldist * speed, c.player.getVelocity().y, ldz/ldist * speed);
+                    }
                     autoMineTarget = null;
                     return;
                 }
 
-                // Ищем цель
+                // Ищем/проверяем цель
                 if (autoMineTarget == null) autoMineTarget = findAutoMineBlock(c);
                 if (autoMineTarget != null) {
                     net.minecraft.block.BlockState st = c.world.getBlockState(autoMineTarget);
-                    if (st.isAir() || !blockMatches(st)) autoMineTarget = null;
+                    if (st.isAir() || !blockMatches(st)) {
+                        autoMineTarget = null;
+                        return;
+                    }
                 }
 
-                if (autoMineTarget != null) {
-                    double targetX = autoMineTarget.getX() + 0.5;
-                    double targetY = autoMineTarget.getY() + 0.5;
-                    double targetZ = autoMineTarget.getZ() + 0.5;
+                if (autoMineTarget == null) return;
 
-                    double dx = targetX - c.player.getX();
-                    double dy = targetY - (c.player.getY() + c.player.getEyeHeight(c.player.getPose()));
-                    double dz = targetZ - c.player.getZ();
-                    double dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                double tx = autoMineTarget.getX() + 0.5;
+                double ty = autoMineTarget.getY() + 0.5;
+                double tz = autoMineTarget.getZ() + 0.5;
 
-                    float yaw = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0F);
-                    float pitch = (float)(-Math.toDegrees(Math.atan2(dy, Math.sqrt(dx*dx + dz*dz))));
-                    c.player.setYaw(yaw);
-                    c.player.setPitch(pitch);
+                double dx = tx - c.player.getX();
+                double dy = ty - (c.player.getY() + c.player.getEyeHeight(c.player.getPose()));
+                double dz = tz - c.player.getZ();
+                double horizDist = Math.sqrt(dx*dx + dz*dz);
+                double dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
 
-                    // Если близко - копаем саму цель
-                    if (dist < 3.5) {
-                        c.player.input.movementForward = 0.0f;
-                        c.player.input.movementSideways = 0.0f;
-                        c.player.setSprinting(false);
-                        c.interactionManager.updateBlockBreakingProgress(autoMineTarget, net.minecraft.util.math.Direction.UP);
-                        c.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
-                        return;
-                    }
+                // Смотрим НА ЦЕЛЬ (в горизонт, не вверх)
+                c.player.setYaw((float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0F));
+                c.player.setPitch((float)(-Math.toDegrees(Math.atan2(dy, horizDist))));
 
-                    // === ИНАЧЕ: проверяем путь ПО ЛИНИИ к цели ===
-                    // Смотрим блоки вдоль луча от игрока к цели
-                    net.minecraft.util.math.BlockPos blockToMine = null;
-                    // Идём по 12 шагам от игрока к цели
-                    for (double step = 1.0; step <= Math.min(dist, 12.0); step += 1.0) {
-                        double cx = c.player.getX() + (dx / dist) * step;
-                        double cy = c.player.getY() + 0.1; // на уровне ног
-                        double cz = c.player.getZ() + (dz / dist) * step;
-                        net.minecraft.util.math.BlockPos pos = new net.minecraft.util.math.BlockPos((int)Math.floor(cx), (int)Math.floor(cy), (int)Math.floor(cz));
-                        net.minecraft.util.math.BlockPos posHead = new net.minecraft.util.math.BlockPos((int)Math.floor(cx), (int)Math.floor(cy + 1.0), (int)Math.floor(cz));
-                        net.minecraft.block.BlockState s1 = c.world.getBlockState(pos);
-                        net.minecraft.block.BlockState s2 = c.world.getBlockState(posHead);
-                        if (!s1.isAir() && !(s1.getBlock() instanceof net.minecraft.block.FluidBlock)) {
-                            blockToMine = pos;
-                            break;
-                        }
-                        if (!s2.isAir() && !(s2.getBlock() instanceof net.minecraft.block.FluidBlock)) {
-                            blockToMine = posHead;
-                            break;
-                        }
-                    }
+                if (dist < 3.0) {
+                    // === КОПАЕМ ЦЕЛЬ ===
+                    c.player.setVelocity(0, c.player.getVelocity().y, 0);
+                    c.interactionManager.updateBlockBreakingProgress(autoMineTarget, net.minecraft.util.math.Direction.UP);
+                    c.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
+                    return;
+                }
 
-                    if (blockToMine != null) {
-                        // Копаем блок на пути
-                        double bx = blockToMine.getX() + 0.5 - c.player.getX();
-                        double bz = blockToMine.getZ() + 0.5 - c.player.getZ();
-                        c.player.setYaw((float)(Math.toDegrees(Math.atan2(bz, bx)) - 90.0F));
-                        c.player.setPitch(0);
-                        c.player.input.movementForward = 0.0f;
-                        c.player.input.movementSideways = 0.0f;
-                        c.player.setSprinting(false);
-                        c.interactionManager.updateBlockBreakingProgress(blockToMine, net.minecraft.util.math.Direction.UP);
-                        c.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
-                        return;
-                    }
+                // === ПРОВЕРЯЕМ ПУТЬ ===
+                // Сканируем по линии от игрока к цели на уровне ног и головы
+                net.minecraft.util.math.BlockPos obstacle = null;
+                double step = 0.8;
+                for (double t = 1.5; t < horizDist && t < 12; t += step) {
+                    double cx = c.player.getX() + (dx/horizDist) * t;
+                    double cz = c.player.getZ() + (dz/horizDist) * t;
+                    double cy = c.player.getY();
+                    net.minecraft.util.math.BlockPos feet = new net.minecraft.util.math.BlockPos((int)Math.floor(cx), (int)Math.floor(cy), (int)Math.floor(cz));
+                    net.minecraft.util.math.BlockPos head = feet.up();
+                    if (!c.world.getBlockState(feet).isAir()) { obstacle = feet; break; }
+                    if (!c.world.getBlockState(head).isAir()) { obstacle = head; break; }
+                }
 
-                    // === Путь свободен - идём ===
-                    c.player.input.movementForward = 1.0f;
-                    c.player.input.movementSideways = 0.0f;
-                    c.player.setSprinting(true);
+                if (obstacle != null) {
+                    // Копаем препятствие
+                    double ox = obstacle.getX() + 0.5 - c.player.getX();
+                    double oz = obstacle.getZ() + 0.5 - c.player.getZ();
+                    c.player.setYaw((float)(Math.toDegrees(Math.atan2(oz, ox)) - 90.0F));
+                    c.player.setPitch(0);
+                    c.player.setVelocity(0, c.player.getVelocity().y, 0);
+                    c.interactionManager.updateBlockBreakingProgress(obstacle, net.minecraft.util.math.Direction.UP);
+                    c.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
+                    return;
+                }
 
-                    // Автопрыжок если перед нами блок высотой 1
-                    net.minecraft.util.math.Vec3d look = c.player.getRotationVec(1.0f);
-                    net.minecraft.util.math.BlockPos ahead = c.player.getBlockPos().offset(
-                        net.minecraft.util.math.Direction.getFacing(look.x, 0, look.z));
-                    if (!c.world.getBlockState(ahead).isAir() && c.world.getBlockState(ahead.up()).isAir() && c.player.isOnGround()) {
-                        c.player.jump();
-                    }
-                } else {
-                    c.player.input.movementForward = 0.0f;
-                    c.player.input.movementSideways = 0.0f;
-                    c.player.setSprinting(false);
+                // === ПУТЬ СВОБОДЕН — ИДЁМ ===
+                double speed = 0.24;
+                c.player.setVelocity(dx/horizDist * speed, c.player.getVelocity().y, dz/horizDist * speed);
+
+                // Автопрыжок если перед нами блок высотой 1
+                net.minecraft.util.math.BlockPos ahead = new net.minecraft.util.math.BlockPos(
+                    (int)Math.floor(c.player.getX() + dx/horizDist * 1.0),
+                    (int)Math.floor(c.player.getY()),
+                    (int)Math.floor(c.player.getZ() + dz/horizDist * 1.0));
+                if (!c.world.getBlockState(ahead).isAir()
+                    && c.world.getBlockState(ahead.up()).isAir()
+                    && c.player.isOnGround()) {
+                    c.player.jump();
                 }
             }
 
@@ -394,28 +386,6 @@ public class VisualModule implements ClientModInitializer {
 
 
 
-    private static net.minecraft.util.math.BlockPos findAutoMineBlock(MinecraftClient c) {
-        if (c.player == null || c.world == null) return null;
-        net.minecraft.util.math.BlockPos playerPos = c.player.getBlockPos();
-        net.minecraft.util.math.BlockPos best = null;
-        double bestDist = autoMineRadius * 2.0;
-        int r = autoMineRadius;
-        for (int x = -r; x <= r; x++) {
-            for (int y = -r; y <= r; y++) {
-                for (int z = -r; z <= r; z++) {
-                    net.minecraft.util.math.BlockPos pos = playerPos.add(x, y, z);
-                    net.minecraft.block.BlockState state = c.world.getBlockState(pos);
-                    if (state.isAir()) continue;
-                    if (!blockMatches(state)) continue;
-                    float h = state.getHardness(c.world, pos);
-                    if (h < 0 || h > 10.0f) continue;
-                    double d = c.player.getPos().distanceTo(net.minecraft.util.math.Vec3d.ofCenter(pos));
-                    if (d < bestDist) { bestDist = d; best = pos; }
-                }
-            }
-        }
-        return best;
-    }
 
 
     private static boolean blockMatches(net.minecraft.block.BlockState state) {
@@ -462,5 +432,29 @@ public class VisualModule implements ClientModInitializer {
         if (m.equals("Chest")) return b == net.minecraft.block.Blocks.CHEST;
         if (m.equals("Torch")) return b == net.minecraft.block.Blocks.TORCH;
         return false;
+    }
+
+    private static net.minecraft.util.math.BlockPos findAutoMineBlock(MinecraftClient c) {
+        if (c.player == null || c.world == null) return null;
+        net.minecraft.util.math.BlockPos playerPos = c.player.getBlockPos();
+        net.minecraft.util.math.BlockPos best = null;
+        double bestDist = 16.0;
+        int r = autoMineRadius;
+        // Y только от -3 до +2 относительно игрока - не смотрим в небо
+        for (int x = -r; x <= r; x++) {
+            for (int y = -3; y <= 2; y++) {
+                for (int z = -r; z <= r; z++) {
+                    net.minecraft.util.math.BlockPos pos = playerPos.add(x, y, z);
+                    net.minecraft.block.BlockState state = c.world.getBlockState(pos);
+                    if (state.isAir()) continue;
+                    if (!blockMatches(state)) continue;
+                    float h = state.getHardness(c.world, pos);
+                    if (h < 0 || h > 10.0f) continue;
+                    double d = c.player.getPos().distanceTo(net.minecraft.util.math.Vec3d.ofCenter(pos));
+                    if (d < bestDist) { bestDist = d; best = pos; }
+                }
+            }
+        }
+        return best;
     }
 }
