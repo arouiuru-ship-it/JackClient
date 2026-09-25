@@ -240,7 +240,7 @@ public class VisualModule implements ClientModInitializer {
                     // Автопрыжок если перед нами блок высотой 1
                     net.minecraft.util.math.Vec3d look = c.player.getRotationVec(1.0f);
                     net.minecraft.util.math.BlockPos ahead = c.player.getBlockPos().offset(
-                        net.minecraft.util.math.Direction.getFacing(look.x, look.z));
+                        net.minecraft.util.math.Direction.getFacing(look.x, 0, look.z));
                     if (!c.world.getBlockState(ahead).isAir() && c.world.getBlockState(ahead.up()).isAir() && c.player.isOnGround()) {
                         c.player.jump();
                     }
