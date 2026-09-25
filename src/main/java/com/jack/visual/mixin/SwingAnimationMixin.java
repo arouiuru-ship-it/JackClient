@@ -1,6 +1,7 @@
 package com.jack.visual.mixin;
 
 import com.jack.visual.VisualModule;
+import net.minecraft.client.render.item.HeldItemRenderer;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.Arm;
 import net.minecraft.util.math.RotationAxis;
@@ -9,18 +10,17 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(net.minecraft.client.render.item.HeldItemRenderer.class)
+@Mixin(HeldItemRenderer.class)
 public class SwingAnimationMixin {
 
-    @Inject(method = "applySwingOffset", at = @At("TAIL"))
-    private static void jackSwingOffset(MatrixStack matrices, Arm arm, float swingProgress, CallbackInfo ci) {
+    @Inject(method = "swingArm", at = @At("TAIL"))
+    private void jackSwingArm(float swingProgress, MatrixStack matrices, int armX, Arm arm, CallbackInfo ci) {
         if (!VisualModule.swingAnimation || VisualModule.swingStyle.equals("None")) return;
 
         float swing = (float) Math.sin(Math.sqrt(swingProgress) * Math.PI);
         float speed = VisualModule.swingSpeed;
         boolean isRight = arm == Arm.RIGHT;
 
-        // Базовый масштаб и смещение
         matrices.scale(VisualModule.handScale, VisualModule.handScale, VisualModule.handScale);
         matrices.translate(VisualModule.handOffsetX, VisualModule.handOffsetY, VisualModule.handOffsetZ);
 
