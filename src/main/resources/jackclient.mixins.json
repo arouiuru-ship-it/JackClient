@@ -3,9 +3,7 @@
   "package": "com.jack.visual.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
-    "TitleScreenMixin",
-    "OptimizedMixin",
-    "LogoDrawerMixin"
+    "TitleScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1
