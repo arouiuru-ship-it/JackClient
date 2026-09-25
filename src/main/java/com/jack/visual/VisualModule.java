@@ -39,6 +39,10 @@ public class VisualModule implements ClientModInitializer {
     public static float jumpCircleRadiusMax = 1.5f;
     public static String lastTarget = null;
     public static boolean autoMine = false;
+    public static int autoMineRadius = 4;
+    public static String autoMineBlock = "Diamond";
+    public static String[] AUTO_MINE_BLOCKS = {"Any", "Diamond", "Iron", "Gold", "Coal", "Emerald", "Ancient Debris", "Logs", "Stone", "Netherite"};
+    public static boolean autoMine = false;
     public static int autoMineRadius = 3;
     public static boolean shaderHand = false;
     public static int handColor = 0x00FF88;
@@ -52,6 +56,7 @@ public class VisualModule implements ClientModInitializer {
 
     private static final MinecraftClient mc = MinecraftClient.getInstance();
     private static boolean rshiftHeld = false;
+    private static net.minecraft.util.math.BlockPos autoMineTarget = null;
     private static float origGamma = 0f;
     private static boolean jumpCircleActive = false;
     private static double jumpCircleX = 0, jumpCircleY = 0, jumpCircleZ = 0;
@@ -124,37 +129,41 @@ public class VisualModule implements ClientModInitializer {
 
             // ===== AUTO MINE =====
             if (autoMine && c.world != null && c.interactionManager != null) {
-                net.minecraft.util.math.BlockPos best = null;
-                double bestDist = autoMineRadius;
-                net.minecraft.util.math.BlockPos playerPos = c.player.getBlockPos();
-                for (int x = -autoMineRadius; x <= autoMineRadius; x++) {
-                    for (int y = -autoMineRadius; y <= autoMineRadius; y++) {
-                        for (int z = -autoMineRadius; z <= autoMineRadius; z++) {
-                            net.minecraft.util.math.BlockPos pos = playerPos.add(x, y, z);
-                            net.minecraft.block.BlockState state = c.world.getBlockState(pos);
-                            if (state.isAir()) continue;
-                            if (state.getBlock() instanceof net.minecraft.block.FluidBlock) continue;
-                            if (state.getBlock() == net.minecraft.block.Blocks.BEDROCK) continue;
-                            float hardness = state.getHardness(c.world, pos);
-                            if (hardness < 0) continue;
-                            if (hardness > 10.0f) continue;
-                            double d = c.player.getPos().distanceTo(net.minecraft.util.math.Vec3d.ofCenter(pos));
-                            if (d < bestDist) { bestDist = d; best = pos; }
-                        }
-                    }
+                // Если цель пропала (сломана) - ищем новую
+                if (autoMineTarget != null) {
+                    net.minecraft.block.BlockState st = c.world.getBlockState(autoMineTarget);
+                    if (st.isAir() || !blockMatches(st)) autoMineTarget = null;
                 }
-                if (best != null) {
-                    double dx = best.getX() + 0.5 - c.player.getX();
-                    double dy = best.getY() + 0.5 - (c.player.getY() + c.player.getEyeHeight(c.player.getPose()));
-                    double dz = best.getZ() + 0.5 - c.player.getZ();
+                // Поиск нового блока
+                if (autoMineTarget == null) {
+                    autoMineTarget = findAutoMineBlock(c);
+                }
+                if (autoMineTarget != null) {
+                    double dx = autoMineTarget.getX() + 0.5 - c.player.getX();
+                    double dy = autoMineTarget.getY() + 0.5 - (c.player.getY() + c.player.getEyeHeight(c.player.getPose()));
+                    double dz = autoMineTarget.getZ() + 0.5 - c.player.getZ();
+                    double dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+                    // Смотрим на блок
                     float yaw = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0F);
                     float pitch = (float)(-Math.toDegrees(Math.atan2(dy, Math.sqrt(dx*dx + dz*dz))));
                     c.player.setYaw(yaw);
                     c.player.setPitch(pitch);
-                    c.interactionManager.updateBlockBreakingProgress(best, net.minecraft.util.math.Direction.UP);
-                    c.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
+
+                    if (dist > 3.8) {
+                        // Идём к блоку - нажимаем W
+                        c.options.forwardKey.setPressed(true);
+                    } else {
+                        // Дошли - ломаем
+                        c.options.forwardKey.setPressed(false);
+                        c.interactionManager.updateBlockBreakingProgress(autoMineTarget, net.minecraft.util.math.Direction.UP);
+                        c.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
+                    }
+                } else {
+                    c.options.forwardKey.setPressed(false);
                 }
             }
+
             boolean pr = InputUtil.isKeyPressed(c.getWindow().getHandle(), GLFW.GLFW_KEY_RIGHT_SHIFT);
             if (pr && !rshiftHeld) { rshiftHeld = true; c.setScreen(new MenuScreen()); }
             if (!pr) rshiftHeld = false;
@@ -292,5 +301,61 @@ public class VisualModule implements ClientModInitializer {
         double dz = e.getZ() - p.getZ();
         double dist = Math.sqrt(dx*dx + dz*dz);
         return (float)(-Math.toDegrees(Math.atan2(dy, dist)));
+    }
+
+    private static net.minecraft.util.math.BlockPos findAutoMineBlock(MinecraftClient c) {
+        net.minecraft.util.math.BlockPos playerPos = c.player.getBlockPos();
+        net.minecraft.util.math.BlockPos best = null;
+        double bestDist = autoMineRadius * 2.0;
+        int r = autoMineRadius;
+        for (int x = -r; x <= r; x++) {
+            for (int y = -r; y <= r; y++) {
+                for (int z = -r; z <= r; z++) {
+                    net.minecraft.util.math.BlockPos pos = playerPos.add(x, y, z);
+                    net.minecraft.block.BlockState state = c.world.getBlockState(pos);
+                    if (state.isAir()) continue;
+                    if (!blockMatches(state)) continue;
+                    float hardness = state.getHardness(c.world, pos);
+                    if (hardness < 0 || hardness > 10.0f) continue;
+                    double d = c.player.getPos().distanceTo(net.minecraft.util.math.Vec3d.ofCenter(pos));
+                    if (d < bestDist) { bestDist = d; best = pos; }
+                }
+            }
+        }
+        return best;
+    }
+
+    private static boolean blockMatches(net.minecraft.block.BlockState state) {
+        net.minecraft.block.Block b = state.getBlock();
+        switch (autoMineBlock) {
+            case "Any": return true;
+            case "Diamond":
+                return b == net.minecraft.block.Blocks.DIAMOND_ORE
+                    || b == net.minecraft.block.Blocks.DEEPSLATE_DIAMOND_ORE;
+            case "Iron":
+                return b == net.minecraft.block.Blocks.IRON_ORE
+                    || b == net.minecraft.block.Blocks.DEEPSLATE_IRON_ORE;
+            case "Gold":
+                return b == net.minecraft.block.Blocks.GOLD_ORE
+                    || b == net.minecraft.block.Blocks.DEEPSLATE_GOLD_ORE
+                    || b == net.minecraft.block.Blocks.NETHER_GOLD_ORE;
+            case "Coal":
+                return b == net.minecraft.block.Blocks.COAL_ORE
+                    || b == net.minecraft.block.Blocks.DEEPSLATE_COAL_ORE;
+            case "Emerald":
+                return b == net.minecraft.block.Blocks.EMERALD_ORE
+                    || b == net.minecraft.block.Blocks.DEEPSLATE_EMERALD_ORE;
+            case "Ancient Debris":
+                return b == net.minecraft.block.Blocks.ANCIENT_DEBRIS;
+            case "Netherite":
+                return b == net.minecraft.block.Blocks.ANCIENT_DEBRIS;
+            case "Logs":
+                return state.isIn(net.minecraft.registry.tag.BlockTags.LOGS);
+            case "Stone":
+                return b == net.minecraft.block.Blocks.STONE
+                    || b == net.minecraft.block.Blocks.COBBLESTONE
+                    || b == net.minecraft.block.Blocks.DEEPSLATE;
+            default: return false;
+        }
     }
 }

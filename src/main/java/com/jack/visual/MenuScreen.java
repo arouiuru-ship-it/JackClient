@@ -46,7 +46,7 @@ public class MenuScreen extends Screen {
             drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*3, "Reach §e" + String.format("%.1f", VisualModule.auraRange), false);
             drawBtn(ctx, mx, my, sX, sY + (ROWH+GAP)*4, "AutoMine " + st(VisualModule.autoMine), VisualModule.autoMine);
 
-            drawBtn(ctx, mx, my, sX2, sY, "Fly " + st(VisualModule.fly), VisualModule.fly);
+            drawBtn(ctx, mx, my, sX2, sY, "Block: §e" + VisualModule.autoMineBlock, false);
             drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP), "AutoSprint " + st(VisualModule.autoSprint), VisualModule.autoSprint);
             drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*2, "NoFall " + st(VisualModule.noFall), VisualModule.noFall);
             drawBtn(ctx, mx, my, sX2, sY + (ROWH+GAP)*3, "Crit §e" + VisualModule.critMode, !VisualModule.critMode.equals("Off"));
@@ -105,7 +105,7 @@ public class MenuScreen extends Screen {
             if (hit(mx,my,sX,sY+(ROWH+GAP)*2)) { VisualModule.aimSmooth += 0.05f; if (VisualModule.aimSmooth > 0.9f) VisualModule.aimSmooth = 0.05f; return true; }
             if (hit(mx,my,sX,sY+(ROWH+GAP)*3)) { VisualModule.auraRange += 0.5; if (VisualModule.auraRange > 6.0) VisualModule.auraRange = 3.0; return true; }
             if (hit(mx,my,sX,sY+(ROWH+GAP)*4)) { VisualModule.autoMine = !VisualModule.autoMine; return true; }
-            if (hit(mx,my,sX2,sY)) { VisualModule.fly = !VisualModule.fly; return true; }
+            if (hit(mx,my,sX2,sY)) { int idx = 0; for (int i = 0; i < VisualModule.AUTO_MINE_BLOCKS.length; i++) if (VisualModule.AUTO_MINE_BLOCKS[i].equals(VisualModule.autoMineBlock)) { idx = i; break; } VisualModule.autoMineBlock = VisualModule.AUTO_MINE_BLOCKS[(idx + 1) % VisualModule.AUTO_MINE_BLOCKS.length]; return true; }
             if (hit(mx,my,sX2,sY+(ROWH+GAP))) { VisualModule.autoSprint = !VisualModule.autoSprint; return true; }
             if (hit(mx,my,sX2,sY+(ROWH+GAP)*2)) { VisualModule.noFall = !VisualModule.noFall; return true; }
             if (hit(mx,my,sX2,sY+(ROWH+GAP)*3)) { VisualModule.critMode = VisualModule.critMode.equals("Off")?"Jump":(VisualModule.critMode.equals("Jump")?"Packet":"Off"); return true; }
